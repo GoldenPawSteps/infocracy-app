@@ -4,8 +4,8 @@ import { create } from 'zustand';
 import toast from 'react-hot-toast';
 
 import api from '@/lib/api';
-import type { CreateMarketDto, Market, Trade } from '@/lib/types';
-import { getApiErrorMessage, normalizeMarket, normalizeTrade } from '@/lib/utils';
+import type { CreateMarketDto, Market } from '@/lib/types';
+import { getApiErrorMessage, normalizeMarket } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 
 interface MarketStore {
@@ -27,13 +27,6 @@ const extractMarketList = (payload: Record<string, unknown> | unknown): Record<s
 const extractMarket = (payload: Record<string, unknown> | unknown): Record<string, unknown> => {
   const source = (payload as Record<string, unknown>)?.data ?? (payload as Record<string, unknown>)?.market ?? payload;
   return (source as Record<string, unknown>) ?? {};
-};
-
-const extractTrades = (payload: Record<string, unknown> | unknown): Trade[] => {
-  const source = (payload as Record<string, unknown>)?.data ?? (payload as Record<string, unknown>)?.trades ?? payload;
-  return Array.isArray(source)
-    ? source.map((trade) => normalizeTrade(trade as Record<string, unknown>))
-    : [];
 };
 
 export const useMarketStore = create<MarketStore>((set, get) => ({
@@ -60,14 +53,10 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   fetchMarket: async (id) => {
     set({ isLoading: true });
     try {
-      const [marketResponse, tradesResponse] = await Promise.all([
-        api.get(`/markets/${id}`),
-        api.get(`/markets/${id}/trades`).catch(() => null),
-      ]);
+      const marketResponse = await api.get(`/markets/${id}`);
 
       const market = normalizeMarket(extractMarket(marketResponse.data));
-      const trades = tradesResponse ? extractTrades(tradesResponse.data) : market.trades ?? [];
-      const selectedMarket = { ...market, trades };
+      const selectedMarket = { ...market, trades: market.trades ?? [] };
 
       set((state) => ({
         selectedMarket,
@@ -87,9 +76,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
       await api.post('/markets', {
         title: data.title,
         description: data.description,
-        outcomes: data.outcomes,
-        outcomeNames: data.outcomes,
-        nOutcomes: data.outcomes.length,
+        outcomes: data.outcomes.map((name) => ({ name })),
         liquidityB: data.liquidityB,
       });
       await Promise.all([get().fetchMarkets(), useAuthStore.getState().fetchMe()]);
@@ -104,7 +91,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   executeTrade: async (marketId, deltaQ) => {
     set({ isLoading: true });
     try {
-      await api.post(`/markets/${marketId}/trades`, { deltaQ });
+      await api.post(`/markets/${marketId}/trade`, { deltaQ });
       await Promise.all([get().fetchMarket(marketId), get().fetchMarkets(), useAuthStore.getState().fetchMe()]);
       toast.success('Trade executed. Market state refreshed.');
     } catch (error) {

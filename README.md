@@ -176,7 +176,6 @@ npm test
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `JWT_SECRET` | Long random secret for JWT signing | `openssl rand -hex 64` |
-| `COOKIE_SECRET` | Secret for cookie signing | `openssl rand -hex 32` |
 | `CORS_ORIGIN` | Allowed frontend origin | `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | Backend API URL (build-time) | `http://localhost:4000/api` |
 | `NEXT_PUBLIC_WS_URL` | Backend WebSocket URL | `http://localhost:4000` |

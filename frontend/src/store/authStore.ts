@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthStore>()(
       login: async (email, password) => {
         set({ isLoading: true });
         try {
-          await api.post('/auth/signin', { email, password });
+          await api.post('/auth/signin', { identifier: email, password });
           await get().fetchMe();
           toast.success('Welcome back to Infocracy.');
         } catch (error) {
@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         set({ isLoading: true });
         try {
-          await api.post('/auth/logout');
+          await api.post('/auth/signout');
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 401) {
             toast.error(getApiErrorMessage(error, 'Unable to sign out.'));

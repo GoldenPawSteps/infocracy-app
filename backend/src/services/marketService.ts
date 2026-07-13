@@ -122,12 +122,27 @@ export class MarketService {
 
   async listMarkets(): Promise<any[]> {
     const markets = await this.prisma.market.findMany({ where: { isUnmade: false }, orderBy: { createdAt: 'desc' } });
+    if (markets.length === 0) {
+      return [];
+    }
 
-    const results = [];
-    for (const market of markets) {
-      const outcomes = await this.prisma.outcome.findMany({ where: { marketId: market.id }, orderBy: { index: 'asc' } });
+    const marketIds = markets.map((market: any) => market.id);
+    const allOutcomes = await this.prisma.outcome.findMany({
+      where: { marketId: { in: marketIds } },
+      orderBy: { index: 'asc' },
+    });
+
+    const outcomesByMarket = new Map<string, any[]>();
+    for (const outcome of allOutcomes) {
+      const list = outcomesByMarket.get(outcome.marketId) ?? [];
+      list.push(outcome);
+      outcomesByMarket.set(outcome.marketId, list);
+    }
+
+    return markets.map((market: any) => {
+      const outcomes = outcomesByMarket.get(market.id) ?? [];
       const probs = probabilities(outcomes.map((outcome: any) => outcome.qValue), market.liquidityB);
-      results.push({
+      return {
         id: market.id,
         makerId: market.makerId,
         title: market.title,
@@ -143,10 +158,8 @@ export class MarketService {
           probability: probs[index].toString(),
         })),
         createdAt: market.createdAt,
-      });
-    }
-
-    return results;
+      };
+    });
   }
 
   async getMarketById(marketId: string): Promise<any> {
@@ -280,6 +293,9 @@ export class MarketService {
       const takerInfluences: Decimal[] = [];
 
       for (const position of positions) {
+        if (position.userId === makerId) {
+          continue;
+        }
         const influence = takerInfluence(probs, parseStringArray(position.shares));
         takerInfluences.push(influence);
         settlements.push({ userId: position.userId, payout: influence.toString() });

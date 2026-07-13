@@ -1,0 +1,32 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { useAuth } from '@/hooks/useAuth';
+
+export default function HomePage() {
+  const router = useRouter();
+  const { user, isLoading, fetchMe } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      void fetchMe().catch(() => undefined);
+    }
+  }, [fetchMe, user]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      router.replace(user ? '/dashboard' : '/signin');
+    }
+  }, [isLoading, router, user]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6">
+      <div className="rounded-2xl border border-gold/20 bg-surface px-8 py-6 text-center shadow-glow">
+        <p className="text-sm uppercase tracking-[0.24em] text-gold-light">INFOCRACY</p>
+        <p className="mt-3 text-text-secondary">Preparing your governance workspace…</p>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  username        String           @unique
+  email           String           @unique
+  passwordHash    String           @map("password_hash")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  balance         Balance?
+  markets         Market[]
+  trades          Trade[]
+  positions       Position[]
+  governanceLogs  GovernanceLog[]
+
+  @@map("users")
+}
+
+model Balance {
+  userId    String   @id @map("user_id")
+  balance   String   @default("1.0")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("balances")
+}
+
+model Market {
+  id             String           @id @default(cuid())
+  makerId        String           @map("maker_id")
+  title          String
+  description    String           @default("")
+  nOutcomes      Int              @map("n_outcomes")
+  liquidityB     String           @map("liquidity_b")
+  isUnmade       Boolean          @default(false) @map("is_unmade")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  unmadeAt       DateTime?        @map("unmade_at")
+  maker          User             @relation(fields: [makerId], references: [id])
+  outcomes       Outcome[]
+  trades         Trade[]
+  positions      Position[]
+  governanceLogs GovernanceLog[]
+
+  @@index([makerId])
+  @@index([isUnmade, createdAt])
+  @@map("markets")
+}
+
+model Outcome {
+  id       String @id @default(cuid())
+  marketId String @map("market_id")
+  index    Int
+  name     String
+  qValue   String @default("0") @map("q_value")
+  market   Market @relation(fields: [marketId], references: [id])
+
+  @@unique([marketId, index])
+  @@index([marketId])
+  @@map("outcomes")
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  marketId  String   @map("market_id")
+  takerId   String   @map("taker_id")
+  deltaQ    Json     @map("delta_q")
+  cost      String
+  createdAt DateTime @default(now()) @map("created_at")
+  market    Market   @relation(fields: [marketId], references: [id])
+  taker     User     @relation(fields: [takerId], references: [id])
+
+  @@index([marketId, createdAt])
+  @@index([takerId, createdAt])
+  @@map("trades")
+}
+
+model Position {
+  userId   String @map("user_id")
+  marketId String @map("market_id")
+  shares   Json
+  user     User   @relation(fields: [userId], references: [id])
+  market   Market @relation(fields: [marketId], references: [id])
+
+  @@id([userId, marketId])
+  @@index([marketId])
+  @@map("positions")
+}
+
+model GovernanceLog {
+  id        String   @id @default(cuid())
+  marketId  String   @map("market_id")
+  sampledBy String   @map("sampled_by")
+  outcome   Int
+  seed      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  market    Market   @relation(fields: [marketId], references: [id])
+  sampler   User     @relation(fields: [sampledBy], references: [id])
+
+  @@index([marketId, createdAt])
+  @@index([sampledBy, createdAt])
+  @@map("governance_logs")
+}

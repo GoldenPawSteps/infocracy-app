@@ -88,7 +88,7 @@ cd infocracy-app
 
 # 2. Copy and configure environment
 cp .env.example .env
-# Edit .env — at minimum set JWT_SECRET and COOKIE_SECRET
+# Edit .env — at minimum set JWT_SECRET
 
 # 3. Start all services
 docker-compose up --build
@@ -510,7 +510,6 @@ docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 **Generate secrets:**
 ```bash
 openssl rand -hex 64  # JWT_SECRET
-openssl rand -hex 32  # COOKIE_SECRET
 ```
 
 ---

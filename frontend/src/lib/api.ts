@@ -37,7 +37,10 @@ api.interceptors.response.use(
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const status = error.response?.status;
     const url = originalRequest?.url ?? '';
-    const isAuthRoute = ['/auth/signin', '/auth/signup', '/auth/refresh'].some((route) => url.includes(route));
+    const isAuthRoute = ['/auth/signin', '/auth/signup', '/auth/refresh'].some((route) => {
+      const normalizedUrl = url.split('?')[0].replace(/\/$/, '');
+      return normalizedUrl === route || normalizedUrl.endsWith(route);
+    });
 
     if (status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute && typeof window !== 'undefined') {
       originalRequest._retry = true;

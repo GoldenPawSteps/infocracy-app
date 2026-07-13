@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: infocracy
       POSTGRES_USER: infocracy
-      POSTGRES_PASSWORD: infocracy_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-infocracy_dev_password}
     ports:
       - "5432:5432"
     volumes:
@@ -40,7 +40,7 @@ services:
     container_name: infocracy-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: "******infocracy:infocracy_password@postgres:5432/infocracy?schema=public"
+      DATABASE_URL: "postgresql://infocracy:${POSTGRES_PASSWORD:-infocracy_dev_password}@postgres:5432/infocracy?schema=public"
       REDIS_URL: "redis://redis:6379"
       JWT_SECRET: "${JWT_SECRET:-please-change-this-secret-in-production}"
       JWT_EXPIRY: "${JWT_EXPIRY:-7d}"

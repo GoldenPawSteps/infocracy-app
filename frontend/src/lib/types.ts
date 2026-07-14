@@ -31,6 +31,20 @@ export interface Trade {
   takerUsername?: string;
 }
 
+export interface MarketAction {
+  id: string;
+  type: 'make' | 'take' | 'unmake';
+  agentId: string;
+  agentUsername: string;
+  createdAt: string;
+  shares: string[];
+  legitimacy: string;
+  probabilities: number[];
+  balanceChange: string;
+  influenceChange: string;
+  powerChange: string;
+}
+
 export interface Market {
   id: string;
   title: string;
@@ -46,6 +60,7 @@ export interface Market {
   probabilities: number[];
   positions?: MarketPosition[];
   myPosition?: string[];
+  actions?: MarketAction[];
   trades?: Trade[];
 }
 

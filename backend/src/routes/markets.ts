@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Decimal from 'decimal.js';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
+import { optionalAuth, requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import type { AppServices } from '../types';
 
@@ -60,8 +60,8 @@ export function createMarketsRouter(services: AppServices): Router {
     res.status(201).json({ market });
   });
 
-  router.get('/', async (_req, res) => {
-    const markets = await services.marketService.listMarkets();
+  router.get('/', optionalAuth, async (req, res) => {
+    const markets = await services.marketService.listMarkets(req.authUser?.sub);
     res.json({ markets });
   });
 

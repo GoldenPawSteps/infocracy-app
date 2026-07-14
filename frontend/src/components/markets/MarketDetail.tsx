@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import api from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import type { Market } from '@/lib/types';
+import { ActionPreview } from '@/components/markets/ActionPreview';
 import { computeLmsrLegitimacy, formatDate, formatDecimal, getApiErrorMessage } from '@/lib/utils';
 import { useMarketStore } from '@/store/marketStore';
 
@@ -235,34 +236,42 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
         </Card>
 
         <Card className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-text-primary">Trade history</h2>
-            <span className="text-sm text-text-secondary">{market.trades?.length ?? 0} events</span>
-          </div>
-          <div className="mt-5 space-y-3">
-            {market.trades?.length ? (
-              market.trades.map((trade) => (
-                <div key={trade.id} className="rounded-2xl border border-border bg-[#141414] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-text-primary">{trade.takerUsername ?? 'Participant'}</p>
-                    <p className="text-sm text-gold-light">Ξ {formatDecimal(trade.cost, 4)}</p>
+          <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
+          <div className="mt-5 space-y-4">
+            {(market.actions ?? []).map((action) => (
+              <div key={action.id} className="rounded-2xl border border-border bg-[#141414] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-text-muted">{action.type}</p>
+                    <p className="mt-2 font-medium text-text-primary">{action.agentUsername}</p>
                   </div>
-                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-text-muted">{formatDate(trade.createdAt)}</p>
-                  <div className="mt-3 grid gap-2 text-sm text-text-secondary">
-                    {trade.deltaQ.map((delta, index) => (
-                      <div key={`${trade.id}-${index}`} className="flex items-center justify-between gap-3">
-                        <span>{market.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
-                        <span className="text-text-primary">{Number(delta) > 0 ? '+' : ''}{formatDecimal(delta, 2)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-sm text-text-secondary">{formatDate(action.createdAt)}</p>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border p-6 text-sm leading-6 text-text-secondary">
-                No trades yet. Early conviction will move the market the most.
+
+                <div className="mt-4 grid gap-2 text-sm text-text-secondary">
+                  {action.shares.map((share, index) => (
+                    <div key={`${action.id}-${index}`} className="flex items-center justify-between gap-3">
+                      <span>{market.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
+                      <span className="text-text-primary">{formatDecimal(share, 4)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <ActionPreview
+                    title={action.type === 'take' ? 'Take preview' : action.type === 'make' ? 'Make preview' : 'Unmake preview'}
+                    legitimacy={action.legitimacy}
+                    probabilities={market.outcomes.map((outcome, index) => ({
+                      label: outcome.name,
+                      value: action.probabilities[index] ?? 0,
+                    }))}
+                    balanceChange={action.balanceChange}
+                    influenceChange={action.influenceChange}
+                    powerChange={action.powerChange}
+                  />
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </Card>
       </div>

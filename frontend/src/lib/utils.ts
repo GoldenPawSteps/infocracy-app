@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios';
 
-import type { LeaderboardEntry, Market, Outcome, Trade, User } from '@/lib/types';
+import type { LeaderboardEntry, Market, MarketAction, Outcome, Trade, User } from '@/lib/types';
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -160,6 +160,22 @@ export function normalizeTrade(raw: Record<string, unknown>): Trade {
   };
 }
 
+export function normalizeMarketAction(raw: Record<string, unknown>): MarketAction {
+  return {
+    id: String(raw.id ?? crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)),
+    type: raw.type === 'make' || raw.type === 'unmake' ? raw.type : 'take',
+    agentId: String(raw.agentId ?? raw.agent_id ?? ''),
+    agentUsername: String(raw.agentUsername ?? raw.agent_username ?? 'Unknown'),
+    createdAt: String(raw.createdAt ?? raw.created_at ?? new Date().toISOString()),
+    shares: toArray<string | number>(raw.shares ?? [], []).map((value) => String(value ?? 0)),
+    legitimacy: String(raw.legitimacy ?? 0),
+    probabilities: toArray<number | string>(raw.probabilities ?? [], []).map((value) => Number(value ?? 0)),
+    balanceChange: String(raw.balanceChange ?? 0),
+    influenceChange: String(raw.influenceChange ?? 0),
+    powerChange: String(raw.powerChange ?? 0),
+  };
+}
+
 export function normalizeMarket(raw: Record<string, unknown>): Market {
   const outcomes = toArray<Record<string, unknown>>(raw.outcomes ?? raw.marketOutcomes ?? [], []).map(normalizeOutcome);
   const liquidityB = String(raw.liquidityB ?? raw.b ?? raw.liquidity ?? 100);
@@ -187,6 +203,7 @@ export function normalizeMarket(raw: Record<string, unknown>): Market {
       shares: toArray<string | number>(position.shares ?? [], []).map((value) => String(value ?? 0)),
     })),
     myPosition: toArray<string | number>(raw.myPosition ?? raw.my_position ?? raw.position ?? [], []).map((value) => String(value ?? 0)),
+    actions: toArray<Record<string, unknown>>(raw.actions ?? raw.actionHistory ?? [], []).map(normalizeMarketAction),
     trades: toArray<Record<string, unknown>>(raw.trades ?? raw.tradeHistory ?? [], []).map(normalizeTrade),
   };
 }

@@ -55,7 +55,7 @@ export interface GovernanceSampleInput {
 export interface AppServices {
   marketService: {
     createMarket: (input: CreateMarketInput) => Promise<any>;
-    listMarkets: () => Promise<any[]>;
+    listMarkets: (userId?: string) => Promise<any[]>;
     getMarketById: (marketId: string) => Promise<any>;
     trade: (input: TradeInput) => Promise<any>;
     unmake: (marketId: string, makerId: string) => Promise<any>;

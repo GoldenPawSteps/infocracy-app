@@ -16,6 +16,22 @@ function parseStringArray(value: unknown): string[] {
   return value.map((entry) => String(entry));
 }
 
+function zeroVector(length: number): string[] {
+  return Array.from({ length }, () => '0');
+}
+
+function addVectors(left: string[], right: string[]): string[] {
+  return left.map((value, index) => decimal(value).plus(decimal(right[index] ?? 0)).toString());
+}
+
+function subtractVectors(left: string[], right: string[]): string[] {
+  return left.map((value, index) => decimal(value).minus(decimal(right[index] ?? 0)).toString());
+}
+
+function cloneVector(values: string[]): string[] {
+  return values.map((value) => String(value));
+}
+
 export class MarketService {
   constructor(private readonly prisma: any) {}
 
@@ -113,20 +129,6 @@ export class MarketService {
         data: { balance: balance.minus(initialCost).toString() },
       });
 
-      const hasSeedTrade = initialQ.some((value) => decimal(value).gt(0));
-      if (hasSeedTrade) {
-        const infrastructureCost = decimal(input.liquidityB).times(new Decimal(input.outcomes.length).ln());
-        const makerInitialTradeCost = initialCost.minus(infrastructureCost);
-        await tx.trade.create({
-          data: {
-            marketId: market.id,
-            takerId: input.makerId,
-            deltaQ: initialQ,
-            cost: makerInitialTradeCost.toString(),
-          },
-        });
-      }
-
       return {
         id: market.id,
         makerId: market.makerId,
@@ -143,7 +145,7 @@ export class MarketService {
     });
   }
 
-  async listMarkets(): Promise<any[]> {
+  async listMarkets(userId?: string): Promise<any[]> {
     const markets = await this.prisma.market.findMany({ orderBy: { createdAt: 'desc' } });
     if (markets.length === 0) {
       return [];
@@ -155,11 +157,19 @@ export class MarketService {
       where: { marketId: { in: marketIds } },
       orderBy: { index: 'asc' },
     });
+    const allPositions = userId
+      ? await this.prisma.position.findMany({
+          where: { userId, marketId: { in: marketIds } },
+        })
+      : [];
     const makers = await this.prisma.user.findMany();
     const makerMap = new Map<string, string>(
       makers
         .filter((user: any) => makerIds.includes(user.id))
         .map((user: any) => [user.id, user.username]),
+    );
+    const myPositionMap = new Map<string, string[]>(
+      allPositions.map((position: any) => [position.marketId, parseStringArray(position.shares)]),
     );
 
     const outcomesByMarket = new Map<string, any[]>();
@@ -183,6 +193,7 @@ export class MarketService {
         isUnmade: market.isUnmade,
         unmadeAt: market.unmadeAt,
         probabilities: probs.map((value) => value.toString()),
+        myPosition: myPositionMap.get(market.id) ?? [],
         outcomes: outcomes.map((outcome: any, index: number) => ({
           id: outcome.id,
           index,
@@ -199,22 +210,118 @@ export class MarketService {
     const { market, outcomes, positions } = await this.getMarketContext(this.prisma, marketId);
     const trades = await this.prisma.trade.findMany({
       where: { marketId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
-    const maker = await this.prisma.user.findUnique({ where: { id: market.makerId } });
-    const traderIds = [...new Set(trades.map((trade: any) => trade.takerId))];
-    const traders = traderIds.length ? await this.prisma.user.findMany() : [];
-    const traderMap = new Map<string, string>(
-      traders
-        .filter((user: any) => traderIds.includes(user.id))
-        .map((user: any) => [user.id, user.username]),
+    const users = await this.prisma.user.findMany();
+    const userMap = new Map<string, string>(users.map((user: any) => [user.id, user.username]));
+    const currentProbabilities = probabilities(outcomes.map((outcome: any) => outcome.qValue), market.liquidityB);
+    const tradeDeltaTotals = trades.reduce(
+      (accumulator: string[], trade: any) => addVectors(accumulator, parseStringArray(trade.deltaQ)),
+      zeroVector(outcomes.length),
     );
-    const probs = probabilities(outcomes.map((outcome: any) => outcome.qValue), market.liquidityB);
+    const initialQ = subtractVectors(outcomes.map((outcome: any) => outcome.qValue), tradeDeltaTotals);
+    const initialProbabilities = probabilities(initialQ, market.liquidityB);
+    const initialCost = cost(initialQ, market.liquidityB);
+
+    const actions: Array<{
+      id: string;
+      type: 'make' | 'take' | 'unmake';
+      agentId: string;
+      agentUsername: string;
+      createdAt: string | Date;
+      shares: string[];
+      legitimacy: string;
+      probabilities: string[];
+      balanceChange: string;
+      influenceChange: string;
+      powerChange: string;
+    }> = [
+      {
+        id: `${market.id}:make`,
+        type: 'make',
+        agentId: market.makerId,
+        agentUsername: userMap.get(market.makerId) ?? 'Unknown',
+        createdAt: market.createdAt,
+        shares: cloneVector(initialQ),
+        legitimacy: initialCost.toString(),
+        probabilities: initialProbabilities.map((value) => value.toString()),
+        balanceChange: initialCost.negated().toString(),
+        influenceChange: initialCost.toString(),
+        powerChange: '0',
+      },
+    ];
+
+    const positionsByUser = new Map<string, string[]>();
+    positionsByUser.set(market.makerId, cloneVector(initialQ));
+    let qState = cloneVector(initialQ);
+
+    for (const trade of trades) {
+      const takerId = String(trade.takerId);
+      const currentShares = positionsByUser.get(takerId) ?? zeroVector(outcomes.length);
+      const deltaQ = parseStringArray(trade.deltaQ);
+      const currentProbabilitiesBeforeTrade = probabilities(qState, market.liquidityB);
+      const nextQState = addVectors(qState, deltaQ);
+      const nextProbabilities = probabilities(nextQState, market.liquidityB);
+      const nextShares = addVectors(currentShares, deltaQ);
+      const tradeCostValue = tradeCost(qState, deltaQ, market.liquidityB);
+      const currentInfluence = takerInfluence(currentProbabilitiesBeforeTrade, currentShares);
+      const nextInfluence = takerInfluence(nextProbabilities, nextShares);
+
+      actions.push({
+        id: trade.id,
+        type: 'take',
+        agentId: takerId,
+        agentUsername: userMap.get(takerId) ?? 'Unknown',
+        createdAt: trade.createdAt,
+        shares: cloneVector(deltaQ),
+        legitimacy: cost(nextQState, market.liquidityB).toString(),
+        probabilities: nextProbabilities.map((value) => value.toString()),
+        balanceChange: tradeCostValue.negated().toString(),
+        influenceChange: nextInfluence.minus(currentInfluence).toString(),
+        powerChange: tradeCostValue.negated().plus(nextInfluence.minus(currentInfluence)).toString(),
+      });
+
+      positionsByUser.set(takerId, nextShares);
+      qState = nextQState;
+    }
+
+    if (market.isUnmade && market.unmadeAt) {
+      const currentCost = cost(qState, market.liquidityB);
+      const takerInfluences: Decimal[] = [];
+
+      for (const position of positions) {
+        if (position.userId === market.makerId) {
+          continue;
+        }
+
+        const shares = parseStringArray(position.shares);
+        const influence = takerInfluence(currentProbabilities, shares);
+        takerInfluences.push(influence);
+      }
+
+      const makerPayout = makerInfluence(currentCost, takerInfluences);
+      const makerPosition = positions.find((position: any) => position.userId === market.makerId);
+      const makerShares = makerPosition ? parseStringArray(makerPosition.shares) : zeroVector(outcomes.length);
+
+      actions.push({
+        id: `${market.id}:unmake:${market.makerId}`,
+        type: 'unmake',
+        agentId: market.makerId,
+        agentUsername: userMap.get(market.makerId) ?? 'Unknown',
+        createdAt: market.unmadeAt,
+        shares: cloneVector(makerShares),
+        legitimacy: currentCost.toString(),
+        probabilities: currentProbabilities.map((value) => value.toString()),
+        balanceChange: makerPayout.toString(),
+        influenceChange: makerPayout.negated().toString(),
+        powerChange: '0',
+      });
+    }
 
     return {
       id: market.id,
       makerId: market.makerId,
-      makerUsername: maker?.username ?? 'Unknown',
+      makerUsername: userMap.get(market.makerId) ?? 'Unknown',
       title: market.title,
       description: market.description,
       liquidityB: market.liquidityB,
@@ -222,27 +329,19 @@ export class MarketService {
       isUnmade: market.isUnmade,
       createdAt: market.createdAt,
       unmadeAt: market.unmadeAt,
-      probabilities: probs.map((value) => value.toString()),
+      probabilities: currentProbabilities.map((value) => value.toString()),
       outcomes: outcomes.map((outcome: any, index: number) => ({
         id: outcome.id,
         index: outcome.index,
         name: outcome.name,
         qValue: outcome.qValue,
-        probability: probs[index].toString(),
+        probability: currentProbabilities[index].toString(),
       })),
       positions: positions.map((position: any) => ({
         userId: position.userId,
         shares: parseStringArray(position.shares),
       })),
-      trades: trades.map((trade: any) => ({
-        id: trade.id,
-        marketId: trade.marketId,
-        takerId: trade.takerId,
-        takerUsername: traderMap.get(trade.takerId) ?? 'Unknown',
-        deltaQ: parseStringArray(trade.deltaQ),
-        cost: trade.cost,
-        createdAt: trade.createdAt,
-      })),
+      actions,
     };
   }
 

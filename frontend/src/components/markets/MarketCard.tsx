@@ -48,6 +48,9 @@ export function MarketCard({ market }: MarketCardProps) {
               <span className="text-text-muted">Outcomes:</span> {market.nOutcomes}
             </p>
             <p>
+              <span className="text-text-muted">Liquidity:</span> {formatDecimal(market.liquidityB, 2)}
+            </p>
+            <p>
               <span className="text-text-muted">Legitimacy:</span> {formatDecimal(legitimacy, 4)}
             </p>
           </div>

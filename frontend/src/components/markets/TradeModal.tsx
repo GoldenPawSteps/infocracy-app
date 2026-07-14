@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import type { Market } from '@/lib/types';
-import { computeLmsrCost, formatDecimal } from '@/lib/utils';
+import { computeLmsrCost, computeLmsrLegitimacy, formatDecimal } from '@/lib/utils';
 import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
 
 interface TradeModalProps {
@@ -35,6 +35,20 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
       ),
     [deltaQ, market.liquidityB, market.outcomes],
   );
+
+  const takePreview = useMemo(() => {
+    const b = Math.max(Number(market.liquidityB) || 1, 0.0001);
+    const postTradeQ = market.outcomes.map((outcome, index) => Number(outcome.qValue || 0) + Number(deltaQ[index] || 0));
+    const scaled = postTradeQ.map((value) => value / b);
+    const maxValue = Math.max(...scaled, 0);
+    const exps = scaled.map((value) => Math.exp(value - maxValue));
+    const total = exps.reduce((sum, value) => sum + value, 0) || 1;
+
+    return {
+      probabilities: exps.map((value) => value / total),
+      legitimacy: computeLmsrLegitimacy(postTradeQ.map((value) => String(value)), b),
+    };
+  }, [deltaQ, market.liquidityB, market.outcomes]);
 
   const hasTrade = deltaQ.some((value) => Math.abs(Number(value || 0)) > 0);
 
@@ -84,10 +98,20 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
           ))}
         </div>
 
-        <div className="rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
+        <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gold-light">Take preview</h4>
           <div className="flex items-center justify-between gap-4">
             <span className="text-text-secondary">Estimated cost</span>
             <span className="text-lg font-semibold text-gold-light">Ξ {formatDecimal(estimatedCost, 4)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-text-secondary">Legitimacy (post-trade)</span>
+            <span className="text-lg font-semibold text-gold-light">{formatDecimal(takePreview.legitimacy, 4)}</span>
+          </div>
+          <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
+            {market.outcomes.map((outcome, index) => (
+              <ProbabilityBar key={`take-preview-${outcome.id}`} label={outcome.name} value={takePreview.probabilities[index] ?? 0} />
+            ))}
           </div>
           <p className="mt-2 text-text-secondary">
             This preview uses the current LMSR surface. Final execution, balances, and slippage remain server-authoritative.

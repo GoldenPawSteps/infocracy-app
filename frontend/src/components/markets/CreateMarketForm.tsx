@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
+import { computeLmsrLegitimacy, formatDecimal } from '@/lib/utils';
 import { useMarketStore } from '@/store/marketStore';
 
 export function CreateMarketForm() {
@@ -32,6 +34,20 @@ export function CreateMarketForm() {
       (!useCustomInitialQ || initialQ.every((value) => Number(value) >= 0)),
     [description, initialQ, liquidityB, outcomes, title, useCustomInitialQ],
   );
+
+  const makePreview = useMemo(() => {
+    const b = Math.max(Number(liquidityB) || 1, 0.0001);
+    const qValues = (useCustomInitialQ ? initialQ : outcomes.map(() => '0')).map((value) => Number(value || 0));
+    const scaled = qValues.map((value) => value / b);
+    const maxValue = Math.max(...scaled, 0);
+    const exps = scaled.map((value) => Math.exp(value - maxValue));
+    const total = exps.reduce((sum, value) => sum + value, 0) || 1;
+
+    return {
+      probabilities: exps.map((value) => value / total),
+      legitimacy: computeLmsrLegitimacy(qValues.map((value) => String(value)), b),
+    };
+  }, [initialQ, liquidityB, outcomes, useCustomInitialQ]);
 
   const handleOutcomeCountChange = (value: number) => {
     const nextCount = Math.min(10, Math.max(2, value || 2));
@@ -172,21 +188,45 @@ export function CreateMarketForm() {
             </label>
 
             {useCustomInitialQ ? (
-              <div className="space-y-4 rounded-xl border border-border/60 bg-[#101010] p-4">
+              <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
+                <p className="text-text-secondary">
+                  Seed initial inventory per outcome. Larger starting q values set stronger initial conviction before public trading begins.
+                </p>
                 {outcomes.map((outcome, index) => (
-                  <Input
-                    key={`initial-q-${index}`}
-                    label={`Initial q for ${outcome || `Outcome ${index + 1}`}`}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={initialQ[index] ?? '0'}
-                    onChange={(event) => handleInitialQChange(index, event.target.value)}
-                    hint="Must be zero or greater. Creation cost is C(q)."
+                  <div key={`initial-q-${index}`} className="rounded-2xl border border-border bg-[#141414] p-4">
+                    <p className="text-sm font-medium text-text-primary">{outcome || `Outcome ${index + 1}`}</p>
+                    <div className="mt-3">
+                      <Input
+                        label="Initial q"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={initialQ[index] ?? '0'}
+                        onChange={(event) => handleInitialQChange(index, event.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-text-muted">Must be zero or greater. Creation cost is C(q).</p>
+              </div>
+            ) : null}
+
+            <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
+              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gold-light">Make preview</h4>
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-[#141414] px-3 py-2">
+                <span className="text-text-secondary">Cost = Legitimacy</span>
+                <span className="font-semibold text-gold-light">Ξ {formatDecimal(makePreview.legitimacy, 4)}</span>
+              </div>
+              <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
+                {outcomes.map((outcome, index) => (
+                  <ProbabilityBar
+                    key={`make-preview-${index}`}
+                    label={outcome || `Outcome ${index + 1}`}
+                    value={makePreview.probabilities[index] ?? 0}
                   />
                 ))}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </Card>

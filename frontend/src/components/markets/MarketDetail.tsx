@@ -121,6 +121,44 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-gold-light">
+                    Market
+                  </span>
+                  {market.isUnmade ? (
+                    <span className="rounded-full border border-danger/40 bg-danger/10 px-3 py-1 text-xs font-medium text-danger">Unmade</span>
+                  ) : (
+                    <span className="rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">Active</span>
+                  )}
+                </div>
+                <h1 className="mt-4 text-3xl font-semibold text-text-primary">{market.title}</h1>
+                <p className="mt-4 max-w-3xl text-base leading-7 text-text-secondary">{market.description}</p>
+              </div>
+
+              <div className="grid w-full shrink-0 gap-3 sm:w-auto sm:grid-cols-2 xl:grid-cols-1">
+                <Button type="button" className="w-full sm:min-w-[11rem]" onClick={() => setTradeOpen(true)} disabled={!canTrade}>
+                  Trade
+                </Button>
+                {isMaker && !market.isUnmade ? (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="w-full sm:min-w-[11rem]"
+                    onClick={() => void unmakeMarket(market.id)}
+                    loading={isLoading}
+                  >
+                    Unmake
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:min-w-[11rem]"
+                  onClick={() => void handleSampleDecision()}
+                  loading={isSampling}
+                >
+                  Sample Governance Decision
+                </Button>
+              </div>
+            </div>
 
             {showDecision ? (
               <Card className="border-gold/20 bg-gold/5 p-5">
@@ -135,9 +173,12 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                     <p className="mt-3 text-sm leading-6 text-text-primary">
                       This sample draw selected {sampleResult.outcomeName} from the current market distribution.
                     </p>
-                    <p className="mt-3 break-all text-sm leading-6 text-text-secondary">
-                      Sampled probability: {(Number(sampleResult.probability) * 100).toFixed(1)}% | Outcome index: {sampleResult.outcomeIndex} | Seed: {sampleResult.seed}
-                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6 text-text-secondary">
+                      <span className="whitespace-nowrap">Sampled probability: {(Number(sampleResult.probability) * 100).toFixed(1)}%</span>
+                      <span className="text-text-muted">|</span>
+                      <span className="whitespace-nowrap">Outcome index: {sampleResult.outcomeIndex}</span>
+                    </div>
+                    <p className="mt-2 break-all text-sm leading-6 text-text-secondary">Seed: {sampleResult.seed}</p>
                     <p className="mt-3 text-sm leading-6 text-text-secondary">{decisionDraft.guidance}</p>
                   </>
                 ) : (
@@ -154,32 +195,6 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 )}
               </Card>
             ) : null}
-                    Market
-                  </span>
-                  {market.isUnmade ? (
-                    <span className="rounded-full border border-danger/40 bg-danger/10 px-3 py-1 text-xs font-medium text-danger">Unmade</span>
-                  ) : (
-                    <span className="rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">Active</span>
-                  )}
-                </div>
-                <h1 className="mt-4 text-3xl font-semibold text-text-primary">{market.title}</h1>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-text-secondary">{market.description}</p>
-              </div>
-
-              <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <Button type="button" onClick={() => setTradeOpen(true)} disabled={!canTrade}>
-                  Trade
-                </Button>
-                {isMaker && !market.isUnmade ? (
-                  <Button type="button" variant="danger" onClick={() => void unmakeMarket(market.id)} loading={isLoading}>
-                    Unmake
-                  </Button>
-                ) : null}
-                  <Button type="button" variant="secondary" onClick={() => void handleSampleDecision()} loading={isSampling}>
-                  Sample Governance Decision
-                </Button>
-              </div>
-            </div>
 
             <div className="grid gap-4 md:grid-cols-4">
               <div className="rounded-2xl border border-border bg-[#141414] p-4">

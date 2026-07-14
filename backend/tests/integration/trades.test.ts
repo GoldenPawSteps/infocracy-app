@@ -1,6 +1,7 @@
 import { LeaderboardService } from '../../src/services/leaderboardService';
 import Decimal from 'decimal.js';
 import { cost } from '../../src/services/marketMath';
+import { GovernanceService } from '../../src/services/governanceService';
 import { MarketService } from '../../src/services/marketService';
 
 class InMemoryPrisma {
@@ -174,6 +175,7 @@ describe('trade integration', () => {
   let prisma: InMemoryPrisma;
   let marketService: MarketService;
   let leaderboardService: LeaderboardService;
+  let governanceService: GovernanceService;
 
   beforeEach(async () => {
     prisma = new InMemoryPrisma();
@@ -185,6 +187,7 @@ describe('trade integration', () => {
 
     marketService = new MarketService(prisma as any);
     leaderboardService = new LeaderboardService(prisma as any);
+    governanceService = new GovernanceService(prisma as any);
   });
 
   it('creates a market, executes a trade, and updates balances', async () => {
@@ -324,5 +327,29 @@ describe('trade integration', () => {
     expect(marketDetail.trades).toHaveLength(1);
     expect(marketDetail.trades[0].takerUsername).toBe('alice');
     expect(marketDetail.trades[0].deltaQ).toEqual(['1', '0']);
+  });
+
+  it('samples both outcomes across different seeds', async () => {
+    const maker = prisma.users[0];
+
+    const market = await marketService.createMarket({
+      makerId: maker.id,
+      title: 'Sampling distribution check',
+      description: 'Ensure governance sampling is not capped below 0.5',
+      outcomes: ['Approve', 'Reject'],
+      liquidityB: '1',
+    });
+
+    const seenOutcomes = new Set<number>();
+    for (let index = 0; index < 64; index += 1) {
+      const sample = await governanceService.sampleOutcome({
+        marketId: market.id,
+        sampledBy: maker.id,
+        seed: `seed-${index}`,
+      });
+      seenOutcomes.add(sample.outcome);
+    }
+
+    expect(seenOutcomes).toEqual(new Set([0, 1]));
   });
 });

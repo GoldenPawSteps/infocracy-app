@@ -5,8 +5,8 @@ import { ApiError, type GovernanceSampleInput } from '../types';
 
 function deterministicUnitInterval(seed: string): number {
   const hash = createHash('sha256').update(seed).digest('hex');
-  const slice = hash.slice(0, 13);
-  const numerator = Number.parseInt(slice, 16);
+  const value64 = BigInt(`0x${hash.slice(0, 16)}`);
+  const numerator = Number(value64 >> 11n);
   const denominator = 0x1fffffffffffff;
   return numerator / denominator;
 }

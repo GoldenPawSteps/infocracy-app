@@ -2,21 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { ActionPreview } from '@/components/markets/ActionPreview';
+import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import type { Market } from '@/lib/types';
-import { computeLmsrCost, computeLmsrLegitimacy, formatDecimal } from '@/lib/utils';
-import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
+import { computeLmsrCost, computeLmsrLegitimacy, computeProbabilities, computeTakerInfluence } from '@/lib/utils';
 
 interface TradeModalProps {
   market: Market;
+  currentUserId?: string;
   open: boolean;
   onClose: () => void;
   onSubmit: (deltaQ: string[]) => Promise<void>;
 }
 
-export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps) {
+export function TradeModal({ market, currentUserId, open, onClose, onSubmit }: TradeModalProps) {
   const [deltaQ, setDeltaQ] = useState<string[]>(market.outcomes.map(() => '0'));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,17 +40,25 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
 
   const takePreview = useMemo(() => {
     const b = Math.max(Number(market.liquidityB) || 1, 0.0001);
-    const postTradeQ = market.outcomes.map((outcome, index) => Number(outcome.qValue || 0) + Number(deltaQ[index] || 0));
-    const scaled = postTradeQ.map((value) => value / b);
-    const maxValue = Math.max(...scaled, 0);
-    const exps = scaled.map((value) => Math.exp(value - maxValue));
-    const total = exps.reduce((sum, value) => sum + value, 0) || 1;
+    const currentProbabilities = computeProbabilities(market.outcomes, b);
+    const currentShares = market.positions?.find((position) => position.userId === currentUserId)?.shares ?? market.outcomes.map(() => '0');
+    const postTradeOutcomes = market.outcomes.map((outcome, index) => ({
+      ...outcome,
+      qValue: String(Number(outcome.qValue || 0) + Number(deltaQ[index] || 0)),
+    }));
+    const postTradeProbabilities = computeProbabilities(postTradeOutcomes, b);
+    const currentInfluence = computeTakerInfluence(currentProbabilities, currentShares);
+    const nextShares = currentShares.map((value, index) => Number(value || 0) + Number(deltaQ[index] || 0)).map(String);
+    const nextInfluence = computeTakerInfluence(postTradeProbabilities, nextShares);
 
     return {
-      probabilities: exps.map((value) => value / total),
-      legitimacy: computeLmsrLegitimacy(postTradeQ.map((value) => String(value)), b),
+      probabilities: postTradeProbabilities,
+      legitimacy: computeLmsrLegitimacy(postTradeOutcomes.map((outcome) => outcome.qValue), b),
+      balanceChange: -estimatedCost,
+      influenceChange: nextInfluence - currentInfluence,
+      powerChange: -estimatedCost + (nextInfluence - currentInfluence),
     };
-  }, [deltaQ, market.liquidityB, market.outcomes]);
+  }, [currentUserId, deltaQ, estimatedCost, market.liquidityB, market.outcomes, market.positions]);
 
   const hasTrade = deltaQ.some((value) => Math.abs(Number(value || 0)) > 0);
 
@@ -77,7 +87,6 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
       open={open}
       onClose={onClose}
       title={`Trade: ${market.title}`}
-      description="Positive values buy additional exposure; negative values sell exposure. The server computes final settlement authoritatively."
     >
       <div className="space-y-6">
         <div className="grid gap-3">
@@ -98,25 +107,17 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
           ))}
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gold-light">Take preview</h4>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-text-secondary">Estimated cost</span>
-            <span className="text-lg font-semibold text-gold-light">Ξ {formatDecimal(estimatedCost, 4)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-text-secondary">Legitimacy (post-trade)</span>
-            <span className="text-lg font-semibold text-gold-light">{formatDecimal(takePreview.legitimacy, 4)}</span>
-          </div>
-          <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
-            {market.outcomes.map((outcome, index) => (
-              <ProbabilityBar key={`take-preview-${outcome.id}`} label={outcome.name} value={takePreview.probabilities[index] ?? 0} />
-            ))}
-          </div>
-          <p className="mt-2 text-text-secondary">
-            This preview uses the current LMSR surface. Final execution, balances, and slippage remain server-authoritative.
-          </p>
-        </div>
+        <ActionPreview
+          title="Take preview"
+          legitimacy={takePreview.legitimacy}
+          probabilities={market.outcomes.map((outcome, index) => ({
+            label: outcome.name,
+            value: takePreview.probabilities[index] ?? 0,
+          }))}
+          balanceChange={takePreview.balanceChange}
+          influenceChange={takePreview.influenceChange}
+          powerChange={takePreview.powerChange}
+        />
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" onClick={onClose}>

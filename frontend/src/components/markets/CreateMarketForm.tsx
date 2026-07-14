@@ -8,8 +8,8 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
-import { computeLmsrLegitimacy, formatDecimal } from '@/lib/utils';
+import { ActionPreview } from '@/components/markets/ActionPreview';
+import { computeLmsrLegitimacy } from '@/lib/utils';
 import { useMarketStore } from '@/store/marketStore';
 
 export function CreateMarketForm() {
@@ -211,22 +211,17 @@ export function CreateMarketForm() {
               </div>
             ) : null}
 
-            <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gold-light">Make preview</h4>
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-[#141414] px-3 py-2">
-                <span className="text-text-secondary">Cost = Legitimacy</span>
-                <span className="font-semibold text-gold-light">Ξ {formatDecimal(makePreview.legitimacy, 4)}</span>
-              </div>
-              <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
-                {outcomes.map((outcome, index) => (
-                  <ProbabilityBar
-                    key={`make-preview-${index}`}
-                    label={outcome || `Outcome ${index + 1}`}
-                    value={makePreview.probabilities[index] ?? 0}
-                  />
-                ))}
-              </div>
-            </div>
+            <ActionPreview
+              title="Make preview"
+              legitimacy={makePreview.legitimacy}
+              probabilities={outcomes.map((outcome, index) => ({
+                label: outcome || `Outcome ${index + 1}`,
+                value: makePreview.probabilities[index] ?? 0,
+              }))}
+              balanceChange={-makePreview.legitimacy}
+              influenceChange={makePreview.legitimacy}
+              powerChange={0}
+            />
           </div>
         </div>
       </Card>

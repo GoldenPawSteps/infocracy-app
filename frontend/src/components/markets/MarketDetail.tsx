@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
 import { TradeModal } from '@/components/markets/TradeModal';
+import { UnmakeMarketModal } from '@/components/markets/UnmakeMarketModal';
 import { Button } from '@/components/ui/Button';
 import api from '@/lib/api';
 import { Card } from '@/components/ui/Card';
@@ -22,6 +23,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const unmakeMarket = useMarketStore((state) => state.unmakeMarket);
   const isLoading = useMarketStore((state) => state.isLoading);
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [unmakeOpen, setUnmakeOpen] = useState(false);
   const [showDecision, setShowDecision] = useState(false);
   const [isSampling, setIsSampling] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
@@ -142,7 +144,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                     type="button"
                     variant="danger"
                     className="w-full sm:min-w-[11rem]"
-                    onClick={() => void unmakeMarket(market.id)}
+                    onClick={() => setUnmakeOpen(true)}
                     loading={isLoading}
                   >
                     Unmake
@@ -265,7 +267,20 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
         </Card>
       </div>
 
-      <TradeModal market={market} open={tradeOpen} onClose={() => setTradeOpen(false)} onSubmit={(deltaQ) => executeTrade(market.id, deltaQ)} />
+      <TradeModal
+        market={market}
+        currentUserId={currentUserId}
+        open={tradeOpen}
+        onClose={() => setTradeOpen(false)}
+        onSubmit={(deltaQ) => executeTrade(market.id, deltaQ)}
+      />
+      <UnmakeMarketModal
+        market={market}
+        currentUserId={currentUserId}
+        open={unmakeOpen}
+        onClose={() => setUnmakeOpen(false)}
+        onSubmit={() => unmakeMarket(market.id)}
+      />
     </>
   );
 }

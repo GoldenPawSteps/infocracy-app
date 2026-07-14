@@ -16,6 +16,11 @@ export interface Outcome {
   qValue: string;
 }
 
+export interface MarketPosition {
+  userId: string;
+  shares: string[];
+}
+
 export interface Trade {
   id: string;
   marketId: string;
@@ -39,6 +44,7 @@ export interface Market {
   unmadeAt?: string;
   outcomes: Outcome[];
   probabilities: number[];
+  positions?: MarketPosition[];
   myPosition?: string[];
   trades?: Trade[];
 }

@@ -23,6 +23,16 @@ export function formatPower(value: number | string | undefined | null) {
   return `⚡ ${formatDecimal(value, 4)}`;
 }
 
+export function formatSignedDecimal(value: number | string | undefined | null, digits = 4) {
+  const numeric = Number(value ?? 0);
+
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return formatDecimal(0, digits);
+  }
+
+  return `${numeric > 0 ? '+' : '-'}${formatDecimal(Math.abs(numeric), digits)}`;
+}
+
 export function formatPercent(value: number | string | undefined | null, digits = 1) {
   const numeric = Number(value ?? 0);
   return `${(numeric * 100).toFixed(digits)}%`;
@@ -100,6 +110,18 @@ export function computeLmsrLegitimacy(qValues: string[], liquidityB: string | nu
   return b * (maxValue + Math.log(sum || 1));
 }
 
+export function computeTakerInfluence(probabilities: number[], shares: Array<string | number>) {
+  if (probabilities.length !== shares.length) {
+    throw new Error('Probability and share vectors must have the same length');
+  }
+
+  return probabilities.reduce((sum, probability, index) => sum + probability * Number(shares[index] ?? 0), 0);
+}
+
+export function computeMakerInfluence(marketCost: number, takerInfluences: number[]) {
+  return marketCost - takerInfluences.reduce((sum, value) => sum + value, 0);
+}
+
 function toArray<T>(value: unknown, fallback: T[] = []) {
   return Array.isArray(value) ? (value as T[]) : fallback;
 }
@@ -160,6 +182,10 @@ export function normalizeMarket(raw: Record<string, unknown>): Market {
     unmadeAt: raw.unmadeAt ? String(raw.unmadeAt) : raw.unmade_at ? String(raw.unmade_at) : undefined,
     outcomes,
     probabilities,
+    positions: toArray<Record<string, unknown>>(raw.positions ?? raw.marketPositions ?? [], []).map((position) => ({
+      userId: String(position.userId ?? position.user_id ?? ''),
+      shares: toArray<string | number>(position.shares ?? [], []).map((value) => String(value ?? 0)),
+    })),
     myPosition: toArray<string | number>(raw.myPosition ?? raw.my_position ?? raw.position ?? [], []).map((value) => String(value ?? 0)),
     trades: toArray<Record<string, unknown>>(raw.trades ?? raw.tradeHistory ?? [], []).map(normalizeTrade),
   };

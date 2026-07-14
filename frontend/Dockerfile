@@ -3,8 +3,14 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV npm_config_update_notifier=false
+ENV npm_config_fund=false
+ENV npm_config_audit=false
+ENV NO_UPDATE_NOTIFIER=true
+
 COPY package*.json ./
-RUN npm ci
+RUN npm --silent ci
 
 # ─── Build stage ──────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -14,14 +20,20 @@ WORKDIR /app
 # Build-time env vars
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
+ARG BACKEND_INTERNAL_URL
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV BACKEND_INTERNAL_URL=$BACKEND_INTERNAL_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npm run build
+# Ensure public exists even when the repository has no public assets.
+RUN mkdir -p public
+
+RUN npm --silent run build
 
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -29,10 +41,11 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-
-# Non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV npm_config_update_notifier=false
+ENV npm_config_fund=false
+ENV npm_config_audit=false
+ENV NO_UPDATE_NOTIFIER=true
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

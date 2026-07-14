@@ -57,4 +57,5 @@ export interface CreateMarketDto {
   description: string;
   outcomes: string[];
   liquidityB: string;
+  initialQ?: string[];
 }

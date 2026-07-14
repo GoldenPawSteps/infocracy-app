@@ -6,11 +6,11 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
-import { formatBalance, formatPower } from '@/lib/utils';
+import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
 
 export function Header() {
   const router = useRouter();
-  const { user, balance, power, logout } = useAuth();
+  const { user, balance, influence, power, logout } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -37,6 +37,10 @@ export function Header() {
           <div className="rounded-xl border border-border bg-[#141414] px-4 py-2">
             <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Balance</p>
             <p className="mt-1 font-medium text-text-primary">{formatBalance(balance)}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-[#141414] px-4 py-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Influence</p>
+            <p className="mt-1 font-medium text-text-primary">{formatInfluence(influence)}</p>
           </div>
           <div className="rounded-xl border border-border bg-[#141414] px-4 py-2">
             <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Power</p>

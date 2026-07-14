@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -23,10 +21,12 @@ services:
     image: redis:7-alpine
     container_name: infocracy-redis
     restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -65,13 +65,15 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}"
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-/api}"
         NEXT_PUBLIC_WS_URL: "${NEXT_PUBLIC_WS_URL:-http://localhost:4000}"
+        BACKEND_INTERNAL_URL: "${BACKEND_INTERNAL_URL:-http://backend:4000}"
     container_name: infocracy-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-/api}"
       NEXT_PUBLIC_WS_URL: "${NEXT_PUBLIC_WS_URL:-http://localhost:4000}"
+      BACKEND_INTERNAL_URL: "${BACKEND_INTERNAL_URL:-http://backend:4000}"
     ports:
       - "3000:3000"
     depends_on:

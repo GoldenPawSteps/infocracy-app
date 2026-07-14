@@ -31,7 +31,7 @@ Infocracy is a governance system built around prediction markets and balance-bas
 |-------------|-------------|
 | **Balance**  | A user's liquid stake (starts at 1.0) |
 | **Market**   | A multi-outcome prediction market |
-| **Make**     | Create a market (costs `b·ln(n)`) |
+| **Make**     | Create a market (costs `C(q)`; defaults to `b·ln(n)` when `q = 0`) |
 | **Take**     | Trade outcome shares (`ΔC = C(q+Δq) − C(q)`) |
 | **Unmake**   | Close and settle a market |
 | **Influence**| Expected payoff from current positions |
@@ -255,7 +255,7 @@ Return current authenticated user with balance and power.
 ### Markets
 
 #### `POST /api/markets` 🔐
-Create a new market (Make). Deducts initial cost `b·ln(n)` from maker's balance.
+Create a new market (Make). Deducts initial cost `C(q)` from maker's balance, where `q` is the optional `initialQ` vector (or all zeros when omitted).
 
 **Body:**
 ```json
@@ -266,7 +266,8 @@ Create a new market (Make). Deducts initial cost `b·ln(n)` from maker's balance
     { "name": "Yes" },
     { "name": "No" }
   ],
-  "liquidityB": "0.25"
+  "liquidityB": "0.25",
+  "initialQ": ["1", "0"]
 }
 ```
 
@@ -278,16 +279,18 @@ Create a new market (Make). Deducts initial cost `b·ln(n)` from maker's balance
     "title": "Should we adopt quadratic funding?",
     "nOutcomes": 2,
     "liquidityB": "0.25",
-    "initialCost": "0.17328679513998632",
-    "probabilities": ["0.5", "0.5"],
+    "initialCost": "1.3288897342925496",
+    "probabilities": ["0.9820137900379085", "0.01798620996209156"],
     "outcomes": [
-      { "index": 0, "name": "Yes", "qValue": "0" },
+      { "index": 0, "name": "Yes", "qValue": "1" },
       { "index": 1, "name": "No",  "qValue": "0" }
     ],
     "createdAt": "2024-01-01T00:00:00Z"
   }
 }
 ```
+
+`initialQ` is optional. If omitted, it defaults to a zero vector and this reduces to the previous initialization behavior.
 
 #### `GET /api/markets`
 List all active (unsettled) markets with current probabilities.

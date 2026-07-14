@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -13,24 +13,40 @@ import { useSocket } from '@/hooks/useSocket';
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, isLoading, fetchMe } = useAuth();
+  const [hasResolvedAuth, setHasResolvedAuth] = useState(false);
 
   useSocket();
 
   useEffect(() => {
-    if (!user) {
-      void fetchMe().catch(() => undefined);
+    if (user) {
+      setHasResolvedAuth(true);
+      return;
     }
+
+    let cancelled = false;
+
+    void fetchMe()
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setHasResolvedAuth(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchMe, user]);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (hasResolvedAuth && !isLoading && !user) {
       router.replace('/signin');
     }
-  }, [isLoading, router, user]);
+  }, [hasResolvedAuth, isLoading, router, user]);
 
-  if (!user) {
+  if (!hasResolvedAuth || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6">
+      <div className="flex min-h-[100dvh] items-center justify-center px-6">
         <div className="rounded-2xl border border-gold/20 bg-surface px-8 py-6 shadow-glow">
           <div className="flex items-center gap-3 text-gold-light">
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -42,7 +58,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-[1600px] px-4 py-4 md:px-6 md:py-6">
+    <div className="mx-auto min-h-[100dvh] max-w-[1600px] px-4 py-4 md:px-6 md:py-6">
       <div className="flex gap-6">
         <Sidebar />
         <main className="min-w-0 flex-1 space-y-4 md:space-y-6">

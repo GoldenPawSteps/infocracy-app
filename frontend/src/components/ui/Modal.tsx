@@ -39,9 +39,22 @@ export function Modal({ open, title, description, onClose, children, className }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+      }}
+    >
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close modal" onClick={onClose} />
-      <div role="dialog" aria-modal="true" className={cn('relative z-10 w-full max-w-2xl rounded-2xl border border-gold/20 bg-surface p-6 shadow-glow', className)}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn(
+          'relative z-10 mx-auto my-4 w-full max-w-2xl rounded-2xl border border-gold/20 bg-surface p-6 shadow-glow md:my-8',
+          className,
+        )}
+      >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-text-primary">{title}</h2>

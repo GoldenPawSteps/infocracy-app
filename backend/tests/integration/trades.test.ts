@@ -1,4 +1,6 @@
 import { LeaderboardService } from '../../src/services/leaderboardService';
+import Decimal from 'decimal.js';
+import { cost } from '../../src/services/marketMath';
 import { MarketService } from '../../src/services/marketService';
 
 class InMemoryPrisma {
@@ -55,6 +57,7 @@ class InMemoryPrisma {
 
   trade = {
     create: undefined,
+    findMany: undefined,
   } as any;
 
   governanceLog = {
@@ -108,7 +111,19 @@ class InMemoryPrisma {
       return { count: data.length };
     };
     this.outcome.findMany = async ({ where }: any) =>
-      [...this.outcomes].filter((outcome) => outcome.marketId === where.marketId).sort((left, right) => left.index - right.index);
+      [...this.outcomes]
+        .filter((outcome) => {
+          if (typeof where.marketId === 'string') {
+            return outcome.marketId === where.marketId;
+          }
+
+          if (Array.isArray(where.marketId?.in)) {
+            return where.marketId.in.includes(outcome.marketId);
+          }
+
+          return true;
+        })
+        .sort((left, right) => left.index - right.index);
     this.outcome.update = async ({ where, data }: any) => {
       const outcome = this.outcomes.find((entry) => entry.id === where.id);
       if (!outcome) throw new Error('outcome not found');
@@ -138,6 +153,13 @@ class InMemoryPrisma {
       const trade = { id: this.nextId('trade'), createdAt: new Date(), ...data };
       this.trades.push(trade);
       return trade;
+    };
+    this.trade.findMany = async ({ where, orderBy }: any) => {
+      const filtered = [...this.trades].filter((trade) => trade.marketId === where.marketId);
+      if (orderBy?.createdAt === 'desc') {
+        return filtered.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      }
+      return filtered.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
     };
 
     this.governanceLog.create = async ({ data }: any) => {
@@ -183,13 +205,32 @@ describe('trade integration', () => {
       deltaQ: ['1', '0'],
     });
 
+    expect(market.makerUsername).toBe('maker');
+
     expect(Number(trade.cost)).toBeGreaterThan(0);
     expect(Number(trade.balanceAfter)).toBeLessThan(5);
     const aliceBalance = await prisma.balance.findUnique({ where: { userId: alice.id } });
     expect(aliceBalance.balance).toBe(trade.balanceAfter);
 
+    const listedMarkets = await marketService.listMarkets();
+    expect(listedMarkets[0].makerUsername).toBe('maker');
+
+    const marketDetail = await marketService.getMarketById(market.id);
+    expect(marketDetail.makerUsername).toBe('maker');
+
     const leaderboard = await leaderboardService.getLeaderboard();
     expect(leaderboard).toHaveLength(3);
+  });
+
+  it('assigns the same rank to contributors tied on power', async () => {
+    const leaderboard = await leaderboardService.getLeaderboard();
+
+    expect(leaderboard).toHaveLength(3);
+    expect(leaderboard.map((entry) => ({ username: entry.username, rank: entry.rank, power: entry.power }))).toEqual([
+      { username: 'alice', rank: 1, power: '5' },
+      { username: 'bob', rank: 1, power: '5' },
+      { username: 'maker', rank: 1, power: '5' },
+    ]);
   });
 
   it('serializes concurrent trades without corrupting market state', async () => {
@@ -221,5 +262,67 @@ describe('trade integration', () => {
     const bobPosition = await prisma.position.findUnique({ where: { userId_marketId: { userId: bob.id, marketId: market.id } } });
     expect(alicePosition.shares).toEqual(['1', '0']);
     expect(bobPosition.shares).toEqual(['0', '1']);
+  });
+
+  it('supports optional initial q and charges C(q) to maker', async () => {
+    const maker = prisma.users[0];
+    const makerBalanceBefore = await prisma.balance.findUnique({ where: { userId: maker.id } });
+    const makerBalanceBeforeValue = makerBalanceBefore.balance;
+
+    const market = await marketService.createMarket({
+      makerId: maker.id,
+      title: 'Bias initial probability toward yes',
+      description: 'Seeded market',
+      outcomes: ['Yes', 'No'],
+      liquidityB: '1',
+      initialQ: ['1', '0'],
+    });
+
+    expect(market.outcomes.map((outcome: any) => outcome.qValue)).toEqual(['1', '0']);
+    expect(Number(market.probabilities[0])).toBeGreaterThan(Number(market.probabilities[1]));
+
+    const makerPosition = await prisma.position.findUnique({ where: { userId_marketId: { userId: maker.id, marketId: market.id } } });
+    expect(makerPosition.shares).toEqual(['1', '0']);
+
+    const makerBalanceAfter = await prisma.balance.findUnique({ where: { userId: maker.id } });
+    const expectedCost = cost(['1', '0'], '1').toString();
+    const expectedMakerInitialTradeCost = new Decimal(expectedCost).minus(new Decimal('1').times(new Decimal(2).ln())).toString();
+    expect(market.initialCost).toBe(expectedCost);
+    expect(makerBalanceAfter.balance).toBe(new Decimal(makerBalanceBeforeValue).minus(expectedCost).toString());
+
+    const marketDetail = await marketService.getMarketById(market.id);
+    expect(marketDetail.trades).toHaveLength(1);
+    expect(marketDetail.trades[0].takerId).toBe(maker.id);
+    expect(marketDetail.trades[0].takerUsername).toBe('maker');
+    expect(marketDetail.trades[0].deltaQ).toEqual(['1', '0']);
+    expect(marketDetail.trades[0].cost).toBe(expectedMakerInitialTradeCost);
+  });
+
+  it('preserves trade history in market detail after market is unmade', async () => {
+    const maker = prisma.users[0];
+    const alice = prisma.users[1];
+
+    const market = await marketService.createMarket({
+      makerId: maker.id,
+      title: 'Archive still keeps history',
+      description: 'Trades should remain visible after unmake',
+      outcomes: ['Yes', 'No'],
+      liquidityB: '1',
+    });
+
+    await marketService.trade({
+      marketId: market.id,
+      takerId: alice.id,
+      deltaQ: ['1', '0'],
+    });
+
+    await marketService.unmake(market.id, maker.id);
+
+    const marketDetail = await marketService.getMarketById(market.id);
+
+    expect(marketDetail.isUnmade).toBe(true);
+    expect(marketDetail.trades).toHaveLength(1);
+    expect(marketDetail.trades[0].takerUsername).toBe('alice');
+    expect(marketDetail.trades[0].deltaQ).toEqual(['1', '0']);
   });
 });

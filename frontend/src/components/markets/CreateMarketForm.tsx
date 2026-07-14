@@ -19,15 +19,18 @@ export function CreateMarketForm() {
   const [description, setDescription] = useState('');
   const [outcomeCount, setOutcomeCount] = useState(2);
   const [outcomes, setOutcomes] = useState<string[]>(['Approve', 'Reject']);
-  const [liquidityB, setLiquidityB] = useState('100');
+  const [liquidityB, setLiquidityB] = useState('1');
+  const [useCustomInitialQ, setUseCustomInitialQ] = useState(false);
+  const [initialQ, setInitialQ] = useState<string[]>(['0', '0']);
 
   const canSubmit = useMemo(
     () =>
       Boolean(title.trim()) &&
       Boolean(description.trim()) &&
       outcomes.every((outcome) => outcome.trim().length > 0) &&
-      Number(liquidityB) > 0,
-    [description, liquidityB, outcomes, title],
+      Number(liquidityB) > 0 &&
+      (!useCustomInitialQ || initialQ.every((value) => Number(value) >= 0)),
+    [description, initialQ, liquidityB, outcomes, title, useCustomInitialQ],
   );
 
   const handleOutcomeCountChange = (value: number) => {
@@ -40,10 +43,21 @@ export function CreateMarketForm() {
       }
       return next.slice(0, nextCount);
     });
+    setInitialQ((current) => {
+      const next = [...current];
+      while (next.length < nextCount) {
+        next.push('0');
+      }
+      return next.slice(0, nextCount);
+    });
   };
 
   const handleOutcomeChange = (index: number, value: string) => {
     setOutcomes((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
+  };
+
+  const handleInitialQChange = (index: number, value: string) => {
+    setInitialQ((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -54,14 +68,19 @@ export function CreateMarketForm() {
       return;
     }
 
-    await createMarket({
-      title: title.trim(),
-      description: description.trim(),
-      outcomes: outcomes.map((outcome) => outcome.trim()),
-      liquidityB,
-    });
+    try {
+      await createMarket({
+        title: title.trim(),
+        description: description.trim(),
+        outcomes: outcomes.map((outcome) => outcome.trim()),
+        liquidityB,
+        initialQ: useCustomInitialQ ? initialQ.map((value) => String(Number(value || 0))) : undefined,
+      });
 
-    router.push('/dashboard');
+      router.push('/dashboard');
+    } catch {
+      return;
+    }
   };
 
   return (
@@ -78,9 +97,12 @@ export function CreateMarketForm() {
 
             <Input
               label="Market title"
+              textarea
+              rows={2}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Should the treasury allocate 15% to civic grants in Q4?"
+              className="min-h-[4.5rem] resize-none"
             />
 
             <Input
@@ -138,6 +160,33 @@ export function CreateMarketForm() {
                 />
               ))}
             </div>
+
+            <label className="flex items-center gap-3 rounded-xl border border-border/70 bg-[#101010] px-3 py-2 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={useCustomInitialQ}
+                onChange={(event) => setUseCustomInitialQ(event.target.checked)}
+                className="h-4 w-4 rounded border-border bg-[#0d0d0d] accent-gold"
+              />
+              Seed custom initial q (maker buys shares at creation)
+            </label>
+
+            {useCustomInitialQ ? (
+              <div className="space-y-4 rounded-xl border border-border/60 bg-[#101010] p-4">
+                {outcomes.map((outcome, index) => (
+                  <Input
+                    key={`initial-q-${index}`}
+                    label={`Initial q for ${outcome || `Outcome ${index + 1}`}`}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={initialQ[index] ?? '0'}
+                    onChange={(event) => handleInitialQChange(index, event.target.value)}
+                    hint="Must be zero or greater. Creation cost is C(q)."
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </Card>

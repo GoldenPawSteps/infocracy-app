@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/Card';
 import type { LeaderboardEntry } from '@/lib/types';
-import { formatBalance, formatPower } from '@/lib/utils';
+import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
@@ -16,7 +16,7 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
           <p className="mt-1 text-sm text-text-secondary">Top contributors ranked by market power.</p>
         </div>
         <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-gold-light">
-          Power
+          ⚡ Power
         </span>
       </div>
 
@@ -41,13 +41,11 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
                   <p className="text-lg font-semibold text-gold-light">{formatPower(entry.power)}</p>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-text-secondary">
-                  <div>
-                    <p className="text-text-muted">Balance</p>
-                    <p className="mt-1 text-text-primary">{formatBalance(entry.balance)}</p>
+                  <div className="rounded-xl border border-border bg-[#101010] px-3 py-2">
+                    <p className="text-text-primary">{formatBalance(entry.balance)}</p>
                   </div>
-                  <div>
-                    <p className="text-text-muted">Influence</p>
-                    <p className="mt-1 text-text-primary">{entry.influence}</p>
+                  <div className="rounded-xl border border-border bg-[#101010] px-3 py-2">
+                    <p className="text-text-primary">{formatInfluence(entry.influence)}</p>
                   </div>
                 </div>
               </div>

@@ -60,26 +60,45 @@ export default function DashboardPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-semibold text-text-primary">Markets</h2>
+            <h2 className="text-2xl font-semibold text-text-primary">Active Markets</h2>
             {(isLoading || leaderboardLoading) ? (
               <span className="text-sm text-text-secondary">Refreshing live signal…</span>
             ) : null}
           </div>
 
           <div className="grid gap-4">
-            {markets.length ? (
-              markets.map((market) => <MarketCard key={market.id} market={market} />)
+            {activeMarkets.length ? (
+              activeMarkets.map((market) => <MarketCard key={market.id} market={market} />)
             ) : (
               <Card className="border-dashed p-8 text-center">
-                <h3 className="text-xl font-semibold text-text-primary">No markets yet</h3>
+                <h3 className="text-xl font-semibold text-text-primary">No active markets</h3>
                 <p className="mt-3 text-sm leading-6 text-text-secondary">
-                  Create the first governance market to begin collecting structured belief across your community.
+                  Create a new market to begin collecting structured belief across your community.
                 </p>
                 <div className="mt-6 flex justify-center">
                   <Link href="/markets/new">
-                    <Button>Create the first market</Button>
+                    <Button>Create market</Button>
                   </Link>
                 </div>
+              </Card>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-semibold text-text-primary">Archived Markets</h2>
+          </div>
+
+          <div className="grid gap-4">
+            {archivedMarkets.length ? (
+              archivedMarkets.map((market) => <MarketCard key={market.id} market={market} />)
+            ) : (
+              <Card className="border-dashed p-8 text-center">
+                <h3 className="text-xl font-semibold text-text-primary">No archived markets</h3>
+                <p className="mt-3 text-sm leading-6 text-text-secondary">
+                  Unmade markets will appear here so you can still open their details and review outcomes.
+                </p>
               </Card>
             )}
           </div>

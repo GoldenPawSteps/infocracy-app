@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { Card } from '@/components/ui/Card';
 import type { Market } from '@/lib/types';
-import { excerpt, formatDate } from '@/lib/utils';
+import { computeLmsrLegitimacy, excerpt, formatDate, formatDecimal } from '@/lib/utils';
 import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
 
 interface MarketCardProps {
@@ -10,6 +10,11 @@ interface MarketCardProps {
 }
 
 export function MarketCard({ market }: MarketCardProps) {
+  const legitimacy = computeLmsrLegitimacy(
+    market.outcomes.map((outcome) => outcome.qValue),
+    market.liquidityB,
+  );
+
   return (
     <Link href={`/markets/${market.id}`} className="block">
       <Card className="group h-full p-5 transition duration-200 hover:border-gold/40 hover:bg-[#1d1d1d] hover:shadow-glow">
@@ -41,6 +46,9 @@ export function MarketCard({ market }: MarketCardProps) {
             </p>
             <p>
               <span className="text-text-muted">Outcomes:</span> {market.nOutcomes}
+            </p>
+            <p>
+              <span className="text-text-muted">Legitimacy:</span> {formatDecimal(legitimacy, 4)}
             </p>
           </div>
           <div className="space-y-3">

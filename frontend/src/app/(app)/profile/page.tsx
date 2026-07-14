@@ -5,10 +5,10 @@ import { useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarkets } from '@/hooks/useMarkets';
-import { formatBalance, formatDate, formatPower } from '@/lib/utils';
+import { formatBalance, formatDate, formatInfluence, formatPower } from '@/lib/utils';
 
 export default function ProfilePage() {
-  const { user, balance, power } = useAuth();
+  const { user, balance, influence, power } = useAuth();
   const { markets, fetchMarkets } = useMarkets();
 
   useEffect(() => {
@@ -89,13 +89,17 @@ export default function ProfilePage() {
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-text-primary">Account metrics</h2>
             <div className="mt-5 space-y-4">
-              <div className="rounded-2xl border border-gold/20 bg-gold/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Current balance</p>
-                <p className="mt-2 text-2xl font-semibold text-gold-light">{formatBalance(balance)}</p>
+              <div className="rounded-2xl border border-border bg-[#141414] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">balance</p>
+                <p className="mt-2 text-2xl font-semibold text-text-primary">{formatBalance(balance)}</p>
               </div>
               <div className="rounded-2xl border border-border bg-[#141414] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Market power</p>
-                <p className="mt-2 text-2xl font-semibold text-text-primary">{formatPower(power)}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">influence</p>
+                <p className="mt-2 text-2xl font-semibold text-text-primary">{formatInfluence(influence)}</p>
+              </div>
+              <div className="rounded-2xl border border-gold/20 bg-gold/5 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">power</p>
+                <p className="mt-2 text-2xl font-semibold text-gold-light">{formatPower(power)}</p>
               </div>
             </div>
           </Card>

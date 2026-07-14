@@ -78,6 +78,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
         description: data.description,
         outcomes: data.outcomes.map((name) => ({ name })),
         liquidityB: data.liquidityB,
+        initialQ: data.initialQ,
       });
       await Promise.all([get().fetchMarkets(), useAuthStore.getState().fetchMe()]);
       toast.success('Market created successfully.');

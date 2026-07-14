@@ -51,6 +51,8 @@ export function TradeModal({ market, open, onClose, onSubmit }: TradeModalProps)
     try {
       await onSubmit(deltaQ.map((value) => String(Number(value || 0))));
       onClose();
+    } catch {
+      return;
     } finally {
       setIsSubmitting(false);
     }

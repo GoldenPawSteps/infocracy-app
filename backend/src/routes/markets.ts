@@ -14,17 +14,29 @@ const decimalStringSchema = z.union([z.string(), z.number()]).transform((value) 
 }, 'Must be a valid decimal');
 
 const positiveDecimalStringSchema = decimalStringSchema.refine((value) => new Decimal(value).gt(0), 'Must be greater than zero');
+const nonNegativeDecimalStringSchema = decimalStringSchema.refine((value) => new Decimal(value).gte(0), 'Must be greater than or equal to zero');
 
 const marketIdSchema = z.object({
   id: z.string().min(1),
 });
 
-const createMarketSchema = z.object({
-  title: z.string().trim().min(3).max(200),
-  description: z.string().trim().max(4000).default(''),
-  outcomes: z.array(z.object({ name: z.string().trim().min(1).max(100) })).min(2).max(20),
-  liquidityB: positiveDecimalStringSchema,
-});
+const createMarketSchema = z
+  .object({
+    title: z.string().trim().min(3).max(200),
+    description: z.string().trim().max(4000).default(''),
+    outcomes: z.array(z.object({ name: z.string().trim().min(1).max(100) })).min(2).max(20),
+    liquidityB: positiveDecimalStringSchema,
+    initialQ: z.array(nonNegativeDecimalStringSchema).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.initialQ && value.initialQ.length !== value.outcomes.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['initialQ'],
+        message: 'initialQ must have the same length as outcomes',
+      });
+    }
+  });
 
 const tradeSchema = z.object({
   deltaQ: z.array(decimalStringSchema).min(2).max(20),
@@ -40,6 +52,7 @@ export function createMarketsRouter(services: AppServices): Router {
       description: req.body.description,
       outcomes: req.body.outcomes.map((outcome: { name: string }) => outcome.name),
       liquidityB: req.body.liquidityB,
+      initialQ: req.body.initialQ,
     });
 
     await services.eventBus.emit('market:created', market);

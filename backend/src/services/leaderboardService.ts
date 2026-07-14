@@ -6,6 +6,24 @@ function decimal(value: string): Decimal {
   return new Decimal(value);
 }
 
+function buildRankedLeaderboard(entries: Omit<LeaderboardEntry, 'rank'>[]): LeaderboardEntry[] {
+  let previousPower: Decimal | null = null;
+  let previousRank = 0;
+
+  return entries.map((entry, index) => {
+    const power = decimal(entry.power);
+    const rank = previousPower !== null && power.equals(previousPower) ? previousRank : index + 1;
+
+    previousPower = power;
+    previousRank = rank;
+
+    return {
+      ...entry,
+      rank,
+    };
+  });
+}
+
 export class LeaderboardService {
   constructor(private readonly prisma: any) {}
 
@@ -47,20 +65,25 @@ export class LeaderboardService {
 
     const balanceMap = new Map<string, Decimal>(balances.map((entry: any) => [entry.userId, decimal(entry.balance)]));
 
-    return users
-      .map((user: any) => {
-        const balance = balanceMap.get(user.id) ?? new Decimal(0);
-        const influence = influenceMap.get(user.id) ?? new Decimal(0);
-        return {
-          userId: user.id,
-          username: user.username,
-          balance: balance.toString(),
-          influence: influence.toString(),
-          power: balance.plus(influence).toString(),
-        };
-      })
-      .sort((left: LeaderboardEntry, right: LeaderboardEntry) => decimal(right.power).comparedTo(decimal(left.power)))
-      .slice(0, limit);
+    const entries: Omit<LeaderboardEntry, 'rank'>[] = users.map((user: any) => {
+      const balance = balanceMap.get(user.id) ?? new Decimal(0);
+      const influence = influenceMap.get(user.id) ?? new Decimal(0);
+
+      return {
+        userId: user.id,
+        username: user.username,
+        balance: balance.toString(),
+        influence: influence.toString(),
+        power: balance.plus(influence).toString(),
+      };
+    });
+
+    const sortedEntries = entries.sort((left, right) => {
+      const powerComparison = decimal(right.power).comparedTo(decimal(left.power));
+      return powerComparison !== 0 ? powerComparison : left.username.localeCompare(right.username);
+    });
+
+    return buildRankedLeaderboard(sortedEntries).slice(0, limit);
   }
 
   async getUserSnapshot(userId: string): Promise<UserSnapshot> {

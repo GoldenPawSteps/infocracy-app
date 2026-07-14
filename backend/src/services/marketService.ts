@@ -66,7 +66,15 @@ export class MarketService {
       }
 
       const zeroVector = Array.from({ length: input.outcomes.length }, () => '0');
-      const initialCost = cost(zeroVector, input.liquidityB);
+      const initialQ = input.initialQ ?? zeroVector;
+      if (initialQ.length !== input.outcomes.length) {
+        throw new ApiError(400, 'initialQ length must match number of outcomes');
+      }
+      if (initialQ.some((value) => decimal(value).lt(0))) {
+        throw new ApiError(400, 'initialQ values must be greater than or equal to zero');
+      }
+
+      const initialCost = cost(initialQ, input.liquidityB);
       const balance = decimal(balanceRecord.balance);
 
       if (balance.lt(initialCost)) {
@@ -88,7 +96,7 @@ export class MarketService {
           marketId: market.id,
           index,
           name,
-          qValue: '0',
+          qValue: initialQ[index],
         })),
       });
 
@@ -96,7 +104,7 @@ export class MarketService {
         data: {
           userId: input.makerId,
           marketId: market.id,
-          shares: zeroVector,
+          shares: initialQ,
         },
       });
 
@@ -105,32 +113,54 @@ export class MarketService {
         data: { balance: balance.minus(initialCost).toString() },
       });
 
+      const hasSeedTrade = initialQ.some((value) => decimal(value).gt(0));
+      if (hasSeedTrade) {
+        const infrastructureCost = decimal(input.liquidityB).times(new Decimal(input.outcomes.length).ln());
+        const makerInitialTradeCost = initialCost.minus(infrastructureCost);
+        await tx.trade.create({
+          data: {
+            marketId: market.id,
+            takerId: input.makerId,
+            deltaQ: initialQ,
+            cost: makerInitialTradeCost.toString(),
+          },
+        });
+      }
+
       return {
         id: market.id,
         makerId: market.makerId,
+        makerUsername: user.username,
         title: market.title,
         description: market.description,
         liquidityB: market.liquidityB,
         nOutcomes: market.nOutcomes,
         initialCost: initialCost.toString(),
-        probabilities: probabilities(zeroVector, input.liquidityB).map((value) => value.toString()),
-        outcomes: input.outcomes.map((name, index) => ({ index, name, qValue: '0' })),
+        probabilities: probabilities(initialQ, input.liquidityB).map((value) => value.toString()),
+        outcomes: input.outcomes.map((name, index) => ({ index, name, qValue: initialQ[index] })),
         createdAt: market.createdAt,
       };
     });
   }
 
   async listMarkets(): Promise<any[]> {
-    const markets = await this.prisma.market.findMany({ where: { isUnmade: false }, orderBy: { createdAt: 'desc' } });
+    const markets = await this.prisma.market.findMany({ orderBy: { createdAt: 'desc' } });
     if (markets.length === 0) {
       return [];
     }
 
     const marketIds = markets.map((market: any) => market.id);
+    const makerIds = [...new Set(markets.map((market: any) => market.makerId))];
     const allOutcomes = await this.prisma.outcome.findMany({
       where: { marketId: { in: marketIds } },
       orderBy: { index: 'asc' },
     });
+    const makers = await this.prisma.user.findMany();
+    const makerMap = new Map<string, string>(
+      makers
+        .filter((user: any) => makerIds.includes(user.id))
+        .map((user: any) => [user.id, user.username]),
+    );
 
     const outcomesByMarket = new Map<string, any[]>();
     for (const outcome of allOutcomes) {
@@ -145,10 +175,13 @@ export class MarketService {
       return {
         id: market.id,
         makerId: market.makerId,
+        makerUsername: makerMap.get(market.makerId) ?? 'Unknown',
         title: market.title,
         description: market.description,
         liquidityB: market.liquidityB,
         nOutcomes: market.nOutcomes,
+        isUnmade: market.isUnmade,
+        unmadeAt: market.unmadeAt,
         probabilities: probs.map((value) => value.toString()),
         outcomes: outcomes.map((outcome: any, index: number) => ({
           id: outcome.id,
@@ -164,11 +197,24 @@ export class MarketService {
 
   async getMarketById(marketId: string): Promise<any> {
     const { market, outcomes, positions } = await this.getMarketContext(this.prisma, marketId);
+    const trades = await this.prisma.trade.findMany({
+      where: { marketId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const maker = await this.prisma.user.findUnique({ where: { id: market.makerId } });
+    const traderIds = [...new Set(trades.map((trade: any) => trade.takerId))];
+    const traders = traderIds.length ? await this.prisma.user.findMany() : [];
+    const traderMap = new Map<string, string>(
+      traders
+        .filter((user: any) => traderIds.includes(user.id))
+        .map((user: any) => [user.id, user.username]),
+    );
     const probs = probabilities(outcomes.map((outcome: any) => outcome.qValue), market.liquidityB);
 
     return {
       id: market.id,
       makerId: market.makerId,
+      makerUsername: maker?.username ?? 'Unknown',
       title: market.title,
       description: market.description,
       liquidityB: market.liquidityB,
@@ -187,6 +233,15 @@ export class MarketService {
       positions: positions.map((position: any) => ({
         userId: position.userId,
         shares: parseStringArray(position.shares),
+      })),
+      trades: trades.map((trade: any) => ({
+        id: trade.id,
+        marketId: trade.marketId,
+        takerId: trade.takerId,
+        takerUsername: traderMap.get(trade.takerId) ?? 'Unknown',
+        deltaQ: parseStringArray(trade.deltaQ),
+        cost: trade.cost,
+        createdAt: trade.createdAt,
       })),
     };
   }

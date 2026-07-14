@@ -25,12 +25,17 @@ export default function SignUpPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await signup(username, email, password);
-    router.push('/dashboard');
+
+    try {
+      await signup(username, email, password);
+      router.push('/dashboard');
+    } catch {
+      return;
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
+    <div className="flex min-h-[100dvh] items-center justify-center px-6 py-12">
       <Card className="grid max-w-5xl overflow-hidden lg:grid-cols-[0.85fr_1.15fr]" glow>
         <div className="p-8 md:p-12">
           <div className="max-w-md">

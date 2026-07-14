@@ -17,7 +17,15 @@ export function createApp(services: AppServices) {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(pinoHttp({ logger }));
+  app.use(
+    pinoHttp({
+      logger,
+      autoLogging: {
+        // Health checks are frequent and add noise without diagnostic value.
+        ignore: (req) => req.url === '/api/health',
+      },
+    }),
+  );
   app.use(helmet());
   app.use(
     cors({

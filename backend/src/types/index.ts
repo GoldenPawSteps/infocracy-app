@@ -18,6 +18,7 @@ export interface LeaderboardEntry {
   balance: string;
   influence: string;
   power: string;
+  rank: number;
 }
 
 export interface UserSnapshot {
@@ -36,6 +37,7 @@ export interface CreateMarketInput {
   description: string;
   outcomes: string[];
   liquidityB: string;
+  initialQ?: string[];
 }
 
 export interface TradeInput {

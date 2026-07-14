@@ -24,12 +24,17 @@ export default function SignInPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await login(email, password);
-    router.push('/dashboard');
+
+    try {
+      await login(email, password);
+      router.push('/dashboard');
+    } catch {
+      return;
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
+    <div className="flex min-h-[100dvh] items-center justify-center px-6 py-12">
       <Card className="grid max-w-5xl overflow-hidden lg:grid-cols-[1.2fr_0.8fr]" glow>
         <div className="bg-gold-radial p-8 md:p-12">
           <p className="text-sm uppercase tracking-[0.34em] text-gold-light">INFOCRACY</p>

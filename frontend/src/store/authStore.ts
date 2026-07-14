@@ -12,6 +12,7 @@ import { getApiErrorMessage, normalizeUser } from '@/lib/utils';
 interface AuthStore {
   user: User | null;
   balance: string;
+  influence: string;
   power: string;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -21,18 +22,55 @@ interface AuthStore {
   clearAuth: () => void;
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+const pickMetric = (sources: Array<Record<string, unknown> | undefined>, key: 'balance' | 'influence' | 'power') => {
+  for (const source of sources) {
+    if (!source) {
+      continue;
+    }
+
+    const value = source[key];
+    if (value !== undefined && value !== null) {
+      if (key === 'balance') {
+        const nestedBalance = asRecord(value)?.balance;
+        return nestedBalance ?? value;
+      }
+
+      return value;
+    }
+
+    if (key === 'balance') {
+      const walletBalance = source.walletBalance;
+      if (walletBalance !== undefined && walletBalance !== null) {
+        return walletBalance;
+      }
+    }
+  }
+
+  return 0;
+};
+
 const extractAuthPayload = (payload: Record<string, unknown> | null | undefined) => {
-  const source = payload?.data && typeof payload.data === 'object' ? (payload.data as Record<string, unknown>) : payload;
-  const metrics =
-    source?.metrics && typeof source.metrics === 'object' ? (source.metrics as Record<string, unknown>) : undefined;
-  const user = normalizeUser((source?.user as Record<string, unknown> | undefined) ?? (source as Record<string, unknown>));
-  const balanceValue =
-    (source?.balance as Record<string, unknown> | undefined)?.balance ?? source?.balance ?? source?.walletBalance ?? 0;
-  const powerValue = source?.power ?? source?.influence ?? metrics?.power ?? 0;
+  const root = asRecord(payload);
+  const data = asRecord(root?.data);
+  const rootUser = asRecord(root?.user);
+  const dataUser = asRecord(data?.user);
+  const rootMetrics = asRecord(root?.metrics);
+  const dataMetrics = asRecord(data?.metrics);
+
+  const userSource = dataUser ?? rootUser ?? data ?? root;
+  const user = normalizeUser(userSource);
+  const metricSources = [root, data, rootUser, dataUser, rootMetrics, dataMetrics];
+  const balanceValue = pickMetric(metricSources, 'balance');
+  const influenceValue = pickMetric(metricSources, 'influence');
+  const powerValue = pickMetric(metricSources, 'power');
 
   return {
     user,
     balance: String(balanceValue ?? 0),
+    influence: String(influenceValue ?? 0),
     power: String(powerValue ?? 0),
   };
 };
@@ -42,9 +80,10 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       user: null,
       balance: '0',
+      influence: '0',
       power: '0',
       isLoading: false,
-      clearAuth: () => set({ user: null, balance: '0', power: '0', isLoading: false }),
+      clearAuth: () => set({ user: null, balance: '0', influence: '0', power: '0', isLoading: false }),
       login: async (email, password) => {
         set({ isLoading: true });
         try {
@@ -81,7 +120,7 @@ export const useAuthStore = create<AuthStore>()(
             throw error;
           }
         } finally {
-          set({ user: null, balance: '0', power: '0', isLoading: false });
+          set({ user: null, balance: '0', influence: '0', power: '0', isLoading: false });
         }
 
         toast.success('Signed out successfully.');
@@ -90,10 +129,10 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         try {
           const response = await api.get('/auth/me');
-          const { user, balance, power } = extractAuthPayload(response.data as Record<string, unknown>);
-          set({ user, balance, power, isLoading: false });
+          const { user, balance, influence, power } = extractAuthPayload(response.data as Record<string, unknown>);
+          set({ user, balance, influence, power, isLoading: false });
         } catch (error) {
-          set({ user: null, balance: '0', power: '0', isLoading: false });
+          set({ user: null, balance: '0', influence: '0', power: '0', isLoading: false });
           if (!(error instanceof AxiosError) || error.response?.status !== 401) {
             throw error;
           }
@@ -105,6 +144,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         user: state.user,
         balance: state.balance,
+        influence: state.influence,
         power: state.power,
       }),
     },

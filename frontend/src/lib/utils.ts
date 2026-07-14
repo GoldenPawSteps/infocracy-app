@@ -12,7 +12,11 @@ export function formatDecimal(value: number | string | undefined | null, digits 
 }
 
 export function formatBalance(value: number | string | undefined | null) {
-  return `Ξ ${formatDecimal(value, 4)}`;
+  return `💰 ${formatDecimal(value, 4)}`;
+}
+
+export function formatInfluence(value: number | string | undefined | null) {
+  return `🧭 ${formatDecimal(value, 4)}`;
 }
 
 export function formatPower(value: number | string | undefined | null) {
@@ -86,6 +90,14 @@ export function computeLmsrCost(qValues: string[], deltaQ: string[], liquidityB:
   const before = logSumExp(current);
   const after = logSumExp(current.map((value, index) => value + (delta[index] || 0)));
   return b * (after - before);
+}
+
+export function computeLmsrLegitimacy(qValues: string[], liquidityB: string | number) {
+  const b = Math.max(Number(liquidityB) || 1, 0.0001);
+  const scaled = qValues.map((value) => Number(value || 0) / b);
+  const maxValue = Math.max(...scaled, 0);
+  const sum = scaled.reduce((accumulator, value) => accumulator + Math.exp(value - maxValue), 0);
+  return b * (maxValue + Math.log(sum || 1));
 }
 
 function toArray<T>(value: unknown, fallback: T[] = []) {

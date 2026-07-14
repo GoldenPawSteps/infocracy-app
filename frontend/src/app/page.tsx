@@ -22,7 +22,7 @@ export default function HomePage() {
   }, [isLoading, router, user]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
+    <div className="flex min-h-[100dvh] items-center justify-center px-6">
       <div className="rounded-2xl border border-gold/20 bg-surface px-8 py-6 text-center shadow-glow">
         <p className="text-sm uppercase tracking-[0.24em] text-gold-light">INFOCRACY</p>
         <p className="mt-3 text-text-secondary">Preparing your governance workspace…</p>

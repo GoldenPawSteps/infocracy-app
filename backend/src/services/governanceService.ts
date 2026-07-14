@@ -21,8 +21,8 @@ export class GovernanceService {
     seed: string;
   }> {
     const market = await this.prisma.market.findUnique({ where: { id: input.marketId } });
-    if (!market || market.isUnmade) {
-      throw new ApiError(404, 'Active market not found');
+    if (!market) {
+      throw new ApiError(404, 'Market not found');
     }
 
     const outcomes = await this.prisma.outcome.findMany({ where: { marketId: market.id }, orderBy: { index: 'asc' } });

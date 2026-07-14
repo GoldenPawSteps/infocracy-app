@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
+    <div className="flex min-h-[100dvh] items-center justify-center px-6">
       <Card className="max-w-xl p-8 text-center" glow>
         <p className="text-sm uppercase tracking-[0.24em] text-gold-light">404</p>
         <h1 className="mt-4 text-3xl font-semibold text-text-primary">Market not found</h1>

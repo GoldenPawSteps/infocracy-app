@@ -199,50 +199,10 @@ export default function ProfilePage() {
   useEffect(() => {
     let isCancelled = false;
 
-    const loadPositionMarkets = async () => {
-      if (!profileUserId) {
-        if (!isCancelled) {
-          setDetailedPositionMarkets([]);
-        }
-        return;
-      }
-
-      try {
-        const detailedMarkets = await Promise.all(
-          markets.map(async (market) => {
-            const response = await api.get(`/markets/${market.id}`);
-            return normalizeMarket(extractMarket(response.data));
-          }),
-        );
-
-        const positionMarkets = detailedMarkets.filter((market) => {
-          const profilePosition = market.positions?.find((position) => position.userId === profileUserId);
-          return (profilePosition?.shares ?? []).some((position) => Math.abs(Number(position || 0)) > 0.0001);
-        });
-
-        if (!isCancelled) {
-          setDetailedPositionMarkets(positionMarkets);
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          console.error('Failed to load detailed position markets:', error);
-        }
-      }
-    };
-
-    void loadPositionMarkets();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [markets, profileUserId]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadProfileActions = async () => {
+    const loadProfileDetails = async () => {
       if (!profileUserId || markets.length === 0) {
         if (!isCancelled) {
+          setDetailedPositionMarkets([]);
           setProfileActions([]);
         }
         return;
@@ -256,6 +216,11 @@ export default function ProfilePage() {
             return normalizeMarket(extractMarket(response.data));
           }),
         );
+
+        const positionMarkets = detailedMarkets.filter((market) => {
+          const profilePosition = market.positions?.find((position) => position.userId === profileUserId);
+          return (profilePosition?.shares ?? []).some((position) => Math.abs(Number(position || 0)) > 0.0001);
+        });
 
         const nextActions = detailedMarkets
           .flatMap((market) =>
@@ -273,11 +238,14 @@ export default function ProfilePage() {
           .sort((left, right) => new Date(right.action.createdAt).getTime() - new Date(left.action.createdAt).getTime());
 
         if (!isCancelled) {
+          setDetailedPositionMarkets(positionMarkets);
           setProfileActions(nextActions);
         }
       } catch (error) {
         if (!isCancelled) {
-          toast.error(getApiErrorMessage(error, 'Unable to load profile action history.'));
+          setDetailedPositionMarkets([]);
+          setProfileActions([]);
+          toast.error(getApiErrorMessage(error, 'Unable to load profile data.'));
         }
       } finally {
         if (!isCancelled) {
@@ -286,7 +254,7 @@ export default function ProfilePage() {
       }
     };
 
-    void loadProfileActions();
+    void loadProfileDetails();
 
     return () => {
       isCancelled = true;

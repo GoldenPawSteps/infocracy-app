@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { ActionPreview } from '@/components/markets/ActionPreview';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { LineChart } from '@/components/ui/LineChart';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarkets } from '@/hooks/useMarkets';
 import api from '@/lib/api';
@@ -36,6 +37,7 @@ interface ProfileSnapshot {
 }
 
 type MarketSortOption = 'legitimacy' | 'newest' | 'oldest' | 'liquidity' | 'title';
+type ChartRangeOption = '7d' | '30d' | 'all';
 
 const POSITION_PAGE_SIZE = 10;
 
@@ -79,14 +81,25 @@ const extractMarket = (payload: Record<string, unknown> | unknown): Record<strin
   return (source as Record<string, unknown>) ?? {};
 };
 
+function getChartCutoff(range: ChartRangeOption) {
+  if (range === 'all') {
+    return null;
+  }
+
+  const days = range === '7d' ? 7 : 30;
+  return Date.now() - days * 24 * 60 * 60 * 1000;
+}
+
 export default function ProfilePage() {
   const { user, balance, influence, power } = useAuth();
   const { markets, fetchMarkets } = useMarkets();
   const searchParams = useSearchParams();
   const profileUserId = searchParams.get('user') ?? user?.id;
   const entries = useLeaderboardStore((state) => state.entries);
+  const fetchLeaderboard = useLeaderboardStore((state) => state.fetchLeaderboard);
   const [isActionHistoryLoading, setIsActionHistoryLoading] = useState(false);
   const [profileActions, setProfileActions] = useState<ProfileActionEntry[]>([]);
+  const [detailedMarkets, setDetailedMarkets] = useState<Market[]>([]);
   const [detailedPositionMarkets, setDetailedPositionMarkets] = useState<Market[]>([]);
   const [profileSnapshot, setProfileSnapshot] = useState<ProfileSnapshot | null>(null);
   const [selectedActionAgents, setSelectedActionAgents] = useState<Record<string, string>>({});
@@ -98,6 +111,7 @@ export default function ProfilePage() {
   const [visiblePositionCount, setVisiblePositionCount] = useState<number>(POSITION_PAGE_SIZE);
   const [actionSearch, setActionSearch] = useState<string>('');
   const [positionSearch, setPositionSearch] = useState<string>('');
+  const [agentChartRange, setAgentChartRange] = useState<ChartRangeOption>('30d');
 
   const isCurrentUserProfile = profileUserId === user?.id;
   const defaultCurrentUserSnapshot = useMemo<ProfileSnapshot | null>(() => {
@@ -197,11 +211,18 @@ export default function ProfilePage() {
   }, [fetchMarkets, markets.length]);
 
   useEffect(() => {
+    if (!entries.length) {
+      void fetchLeaderboard();
+    }
+  }, [entries.length, fetchLeaderboard]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     const loadProfileDetails = async () => {
       if (!profileUserId || markets.length === 0) {
         if (!isCancelled) {
+          setDetailedMarkets([]);
           setDetailedPositionMarkets([]);
           setProfileActions([]);
         }
@@ -238,11 +259,13 @@ export default function ProfilePage() {
           .sort((left, right) => new Date(right.action.createdAt).getTime() - new Date(left.action.createdAt).getTime());
 
         if (!isCancelled) {
+          setDetailedMarkets(detailedMarkets);
           setDetailedPositionMarkets(positionMarkets);
           setProfileActions(nextActions);
         }
       } catch (error) {
         if (!isCancelled) {
+          setDetailedMarkets([]);
           setDetailedPositionMarkets([]);
           setProfileActions([]);
           toast.error(getApiErrorMessage(error, 'Unable to load profile data.'));
@@ -268,6 +291,7 @@ export default function ProfilePage() {
     setPositionStatusFilter('all');
     setPositionSort('legitimacy');
     setVisibleProfileActionCount(PROFILE_ACTION_PAGE_SIZE);
+    setAgentChartRange('30d');
   }, [profileUserId]);
 
   useEffect(() => {
@@ -324,6 +348,78 @@ export default function ProfilePage() {
     [sortedPositionMarkets, visiblePositionCount],
   );
 
+  const agentChartCutoff = useMemo(() => getChartCutoff(agentChartRange), [agentChartRange]);
+
+  const agentChartData = useMemo(() => {
+    const events = detailedMarkets
+      .flatMap((market) => (market.actions ?? []).map((action) => ({ market, action })))
+      .map(({ action }) => {
+        const participant = action.participantChanges.find((change) => change.agentId === profileUserId);
+        if (!participant) {
+          return null;
+        }
+
+        const timestamp = new Date(action.createdAt).getTime();
+        if (!Number.isFinite(timestamp)) {
+          return null;
+        }
+
+        return {
+          timestamp,
+          label: new Date(action.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }),
+          balanceDelta: Number(participant.balanceChange ?? 0),
+          influenceDelta: Number(participant.influenceChange ?? 0),
+          powerDelta: Number(participant.powerChange ?? 0),
+        };
+      })
+      .filter((event): event is { timestamp: number; label: string; balanceDelta: number; influenceDelta: number; powerDelta: number } =>
+        event !== null,
+      )
+      .filter((event) => {
+        if (agentChartCutoff === null) {
+          return true;
+        }
+
+        return event.timestamp >= agentChartCutoff;
+      })
+      .sort((left, right) => left.timestamp - right.timestamp);
+
+    const currentBalance = Number(profileUser?.balance ?? 0);
+    const currentInfluence = Number(profileUser?.influence ?? 0);
+    const currentPower = Number(profileUser?.power ?? 0);
+
+    const totalBalanceDelta = events.reduce((sum, event) => sum + event.balanceDelta, 0);
+    const totalInfluenceDelta = events.reduce((sum, event) => sum + event.influenceDelta, 0);
+    const totalPowerDelta = events.reduce((sum, event) => sum + event.powerDelta, 0);
+
+    let cumulativeBalance = currentBalance - totalBalanceDelta;
+    let cumulativeInfluence = currentInfluence - totalInfluenceDelta;
+    let cumulativePower = currentPower - totalPowerDelta;
+
+    const points = events.map((event) => {
+      cumulativeBalance += event.balanceDelta;
+      cumulativeInfluence += event.influenceDelta;
+      cumulativePower += event.powerDelta;
+
+      return {
+        label: event.label,
+        balance: cumulativeBalance,
+        influence: cumulativeInfluence,
+        power: cumulativePower,
+      };
+    });
+
+    return {
+      labels: points.map((point) => point.label),
+      balanceSeries: points.map((point) => point.balance),
+      influenceSeries: points.map((point) => point.influence),
+      powerSeries: points.map((point) => point.power),
+    };
+  }, [detailedMarkets, profileUserId, agentChartCutoff, profileUser?.balance, profileUser?.influence, profileUser?.power]);
+
   return (
     <div className="space-y-6 stagger-enter">
       <Card className="p-6 md:p-8" glow>
@@ -361,6 +457,61 @@ export default function ProfilePage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Active positions</p>
                 <p className="mt-2 text-3xl font-semibold text-text-primary">{activePositions.length}</p>
               </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-text-primary">Agent metrics chart</h2>
+                <p className="mt-2 text-sm text-text-secondary">Balance, influence, and power on the same chart from action history.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {(['7d', '30d', 'all'] as ChartRangeOption[]).map((range) => (
+                  <Button
+                    key={`agent-chart-${range}`}
+                    type="button"
+                    size="sm"
+                    variant={agentChartRange === range ? 'secondary' : 'ghost'}
+                    onClick={() => setAgentChartRange(range)}
+                  >
+                    {range.toUpperCase()}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {agentChartData.labels.length ? (
+                <LineChart
+                  labels={agentChartData.labels}
+                  series={[
+                    {
+                      id: 'Balance',
+                      colorClassName: 'stroke-amber-300',
+                      legendColorClassName: 'bg-amber-300',
+                      values: agentChartData.balanceSeries,
+                    },
+                    {
+                      id: 'Influence',
+                      colorClassName: 'stroke-cyan-300',
+                      legendColorClassName: 'bg-cyan-300',
+                      values: agentChartData.influenceSeries,
+                    },
+                    {
+                      id: 'Power',
+                      colorClassName: 'stroke-rose-300',
+                      legendColorClassName: 'bg-rose-300',
+                      values: agentChartData.powerSeries,
+                    },
+                  ]}
+                  valueFormatter={(value) => formatDecimal(value, 4)}
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border p-5 text-sm leading-6 text-text-secondary">
+                  No agent metrics data available for the selected range.
+                </div>
+              )}
             </div>
           </Card>
 

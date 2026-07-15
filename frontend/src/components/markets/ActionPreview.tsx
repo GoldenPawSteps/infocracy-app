@@ -44,15 +44,15 @@ export function ActionPreview({
 
       <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-text-secondary">Balance change</span>
+          <span className="text-text-secondary">Δ 💰</span>
           <span className="font-semibold text-gold-light">{formatSignedDecimal(balanceChange, 4)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="text-text-secondary">Influence change</span>
+          <span className="text-text-secondary">Δ 🧭</span>
           <span className="font-semibold text-gold-light">{formatSignedDecimal(influenceChange, 4)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="text-text-secondary">Power change</span>
+          <span className="text-text-secondary">Δ ⚡</span>
           <span className="font-semibold text-gold-light">{formatSignedDecimal(powerChange, 4)}</span>
         </div>
       </div>

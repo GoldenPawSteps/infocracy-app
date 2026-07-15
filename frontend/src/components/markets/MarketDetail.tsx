@@ -8,6 +8,7 @@ import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
 import { TradeModal } from '@/components/markets/TradeModal';
 import { UnmakeMarketModal } from '@/components/markets/UnmakeMarketModal';
 import { Button } from '@/components/ui/Button';
+import { LineChart } from '@/components/ui/LineChart';
 import api from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import type { Market } from '@/lib/types';
@@ -16,6 +17,16 @@ import { computeLmsrLegitimacy, formatDate, formatDecimal, getApiErrorMessage } 
 import { useMarketStore } from '@/store/marketStore';
 
 const ACTION_HISTORY_PAGE_SIZE = 10;
+type ChartRangeOption = '7d' | '30d' | 'all';
+
+function getChartCutoff(range: ChartRangeOption) {
+  if (range === 'all') {
+    return null;
+  }
+
+  const days = range === '7d' ? 7 : 30;
+  return Date.now() - days * 24 * 60 * 60 * 1000;
+}
 
 interface MarketDetailProps {
   market: Market;
@@ -35,6 +46,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const [actionAgentFilter, setActionAgentFilter] = useState<string>('all');
   const [actionSearch, setActionSearch] = useState<string>('');
   const [visibleActionCount, setVisibleActionCount] = useState<number>(ACTION_HISTORY_PAGE_SIZE);
+  const [marketChartRange, setMarketChartRange] = useState<ChartRangeOption>('30d');
   const [sampleResult, setSampleResult] = useState<{
     outcomeIndex: number;
     outcomeName: string;
@@ -49,12 +61,83 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     [market.liquidityB, market.outcomes],
   );
 
+  const marketChartCutoff = useMemo(() => getChartCutoff(marketChartRange), [marketChartRange]);
+
+  const marketTimelineChart = useMemo(() => {
+    const sortedActions = [...(market.actions ?? [])].sort(
+      (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+    );
+    const actions = sortedActions.filter((action) => {
+      if (marketChartCutoff === null) {
+        return true;
+      }
+
+      return new Date(action.createdAt).getTime() >= marketChartCutoff;
+    });
+
+    const includeSnapshot = marketChartCutoff === null || new Date(market.createdAt).getTime() >= marketChartCutoff;
+
+    const labels = actions.length
+      ? actions.map((action) =>
+          new Date(action.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }),
+        )
+      : includeSnapshot
+        ? [
+            new Date(market.createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+            }),
+          ]
+        : [];
+
+    const rawLegitimacySeries = actions.length ? actions.map((action) => Number(action.legitimacy || 0)) : includeSnapshot ? [legitimacy] : [];
+
+    const legitimacyMin = Math.min(...rawLegitimacySeries);
+    const legitimacyMax = Math.max(...rawLegitimacySeries);
+    const legitimacyRange = legitimacyMax - legitimacyMin;
+    // Normalize legitimacy to the probability scale so all lines are comparable in one chart.
+    const legitimacySeries = rawLegitimacySeries.map((value) => {
+      if (!Number.isFinite(value)) {
+        return 0;
+      }
+
+      if (legitimacyRange <= 0.0000001) {
+        return 0.5;
+      }
+
+      return (value - legitimacyMin) / legitimacyRange;
+    });
+
+    const probabilitySeries = market.outcomes.map((outcome, index) => {
+      const colorClassName = ['stroke-emerald-300', 'stroke-sky-300', 'stroke-amber-300', 'stroke-rose-300', 'stroke-cyan-300'][index % 5];
+      const legendColorClassName = ['bg-emerald-300', 'bg-sky-300', 'bg-amber-300', 'bg-rose-300', 'bg-cyan-300'][index % 5];
+      return {
+        id: `P(${outcome.name})`,
+        colorClassName,
+        legendColorClassName,
+        values: actions.length ? actions.map((action) => action.probabilities[index] ?? 0) : includeSnapshot ? [market.probabilities[index] ?? 0] : [],
+        legendValueFormatter: (value: number) => `${(value * 100).toFixed(1)}%`,
+      };
+    });
+
+    return {
+      labels,
+      legitimacySeries,
+      rawLegitimacySeries,
+      probabilitySeries,
+    };
+  }, [market.actions, market.createdAt, market.outcomes, market.probabilities, legitimacy, marketChartCutoff]);
+
   useEffect(() => {
     setShowDecision(false);
     setSampleResult(null);
     setSampleError(null);
     setSelectedActionAgents({});
     setActionAgentFilter('all');
+    setMarketChartRange('30d');
     setVisibleActionCount(ACTION_HISTORY_PAGE_SIZE);
   }, [market.id]);
 
@@ -252,6 +335,41 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 <p className="text-xs uppercase tracking-[0.22em] text-text-muted">Legitimacy</p>
                 <p className="mt-2 text-lg font-semibold text-text-primary">{formatDecimal(legitimacy, 4)}</p>
               </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xl font-semibold text-text-primary">Market chart</h2>
+                <div className="flex items-center gap-2">
+                  {(['7d', '30d', 'all'] as ChartRangeOption[]).map((range) => (
+                    <Button
+                      key={`market-chart-${range}`}
+                      type="button"
+                      size="sm"
+                      variant={marketChartRange === range ? 'secondary' : 'ghost'}
+                      onClick={() => setMarketChartRange(range)}
+                    >
+                      {range.toUpperCase()}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <LineChart
+                labels={marketTimelineChart.labels}
+                series={[
+                  {
+                    id: 'Legitimacy',
+                    colorClassName: 'stroke-gold-light',
+                    legendColorClassName: 'bg-gold-light',
+                    values: marketTimelineChart.legitimacySeries,
+                    displayValues: marketTimelineChart.rawLegitimacySeries,
+                    legendValueFormatter: (value: number) => formatDecimal(value, 4),
+                  },
+                  ...marketTimelineChart.probabilitySeries,
+                ]}
+                valueFormatter={(value) => formatDecimal(value, 4)}
+              />
             </div>
 
             <div className="space-y-5">

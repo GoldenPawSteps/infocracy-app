@@ -450,6 +450,15 @@ export class MarketService {
         userId: position.userId,
         shares: parseStringArray(position.shares),
       })),
+      trades: trades.map((trade: any) => ({
+        id: trade.id,
+        marketId: trade.marketId,
+        takerId: trade.takerId,
+        takerUsername: userMap.get(trade.takerId) ?? 'Unknown',
+        deltaQ: parseStringArray(trade.deltaQ),
+        cost: String(trade.cost),
+        createdAt: trade.createdAt,
+      })),
       actions,
     };
   }

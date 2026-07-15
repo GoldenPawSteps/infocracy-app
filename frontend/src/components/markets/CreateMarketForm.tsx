@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { ActionPreview } from '@/components/markets/ActionPreview';
+import { startRouteTransition } from '@/lib/navigation';
 import { computeLmsrLegitimacy } from '@/lib/utils';
 import { useMarketStore } from '@/store/marketStore';
 
@@ -93,6 +94,7 @@ export function CreateMarketForm() {
         initialQ: useCustomInitialQ ? initialQ.map((value) => String(Number(value || 0))) : undefined,
       });
 
+      startRouteTransition('/dashboard');
       router.push('/dashboard');
     } catch {
       return;
@@ -227,7 +229,14 @@ export function CreateMarketForm() {
       </Card>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="ghost" onClick={() => router.push('/dashboard')}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            startRouteTransition('/dashboard');
+            router.push('/dashboard');
+          }}
+        >
           Cancel
         </Button>
         <Button type="submit" loading={isLoading} disabled={!canSubmit}>

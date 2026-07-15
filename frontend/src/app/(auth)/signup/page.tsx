@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
+import { startRouteTransition } from '@/lib/navigation';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (user) {
+      startRouteTransition('/dashboard');
       router.replace('/dashboard');
     }
   }, [router, user]);
@@ -28,6 +30,7 @@ export default function SignUpPage() {
 
     try {
       await signup(username, email, password);
+      startRouteTransition('/dashboard');
       router.push('/dashboard');
     } catch {
       return;

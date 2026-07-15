@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 
 import { MarketDetail } from '@/components/markets/MarketDetail';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarketStore } from '@/store/marketStore';
@@ -18,37 +16,59 @@ interface MarketPageProps {
 export default function MarketPage({ params }: MarketPageProps) {
   const { user } = useAuth();
   const market = useMarketStore((state) => state.selectedMarket);
-  const isLoading = useMarketStore((state) => state.isLoading);
+  const loadingMarketId = useMarketStore((state) => state.loadingMarketId);
   const fetchMarket = useMarketStore((state) => state.fetchMarket);
+  const clearSelectedMarket = useMarketStore((state) => state.clearSelectedMarket);
 
   useEffect(() => {
+    // If we already have the market cached and it matches the route, don't refetch
+    if (market && market.id === params.id) {
+      return;
+    }
+    
+    // Otherwise, clear the old market and fetch the new one
+    clearSelectedMarket();
     void fetchMarket(params.id);
-  }, [fetchMarket, params.id]);
+  }, [fetchMarket, clearSelectedMarket, params.id, market]);
 
-  if (isLoading && !market) {
-    return (
-      <Card className="p-8 text-center">
-        <p className="text-sm uppercase tracking-[0.24em] text-gold-light">Loading market</p>
-        <p className="mt-3 text-text-secondary">Gathering price history and current outcome probabilities…</p>
-      </Card>
-    );
-  }
-
-  if (!market || market.id !== params.id) {
-    return (
-      <Card className="p-8 text-center">
-        <h1 className="text-2xl font-semibold text-text-primary">Market unavailable</h1>
-        <p className="mt-3 text-sm leading-6 text-text-secondary">
-          This market could not be loaded. It may have been removed or is currently inaccessible.
-        </p>
-        <div className="mt-6 flex justify-center">
-          <Link href="/dashboard">
-            <Button>Return to dashboard</Button>
-          </Link>
+  const loadingState = (
+    <div className="space-y-6">
+      <Card className="overflow-hidden p-6 md:p-8" glow>
+        <div className="h-2 w-full bg-gradient-to-r from-gold/30 via-gold-light/60 to-gold/30" />
+        <div className="mt-6 animate-pulse space-y-4">
+          <div className="h-7 w-64 rounded-lg bg-[#1c1c1c]" />
+          <div className="h-4 w-full max-w-3xl rounded-lg bg-[#171717]" />
+          <div className="h-4 w-2/3 rounded-lg bg-[#171717]" />
         </div>
       </Card>
-    );
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="h-32 animate-pulse border-border bg-[#141414]" />
+        <Card className="h-32 animate-pulse border-border bg-[#141414]" />
+        <Card className="h-32 animate-pulse border-border bg-[#141414]" />
+      </div>
+
+      <Card className="p-6 md:p-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-5 w-40 rounded-lg bg-[#1b1b1b]" />
+          <div className="h-16 rounded-xl bg-[#151515]" />
+          <div className="h-16 rounded-xl bg-[#151515]" />
+          <div className="h-16 rounded-xl bg-[#151515]" />
+        </div>
+      </Card>
+    </div>
+  );
+
+  // Show loading only if we're actively fetching this specific market
+  if (loadingMarketId === params.id) {
+    return loadingState;
   }
 
-  return <MarketDetail market={market} currentUserId={user?.id} />;
+  // Show the market if we have it
+  if (market && market.id === params.id) {
+    return <MarketDetail market={market} currentUserId={user?.id} />;
+  }
+
+  // If we get here, market is not loaded and not loading - show loading placeholder
+  return loadingState;
 }

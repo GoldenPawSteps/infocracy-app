@@ -12,11 +12,13 @@ interface MarketStore {
   markets: Market[];
   selectedMarket: Market | null;
   isLoading: boolean;
+  loadingMarketId: string | null;
   fetchMarkets: () => Promise<void>;
   fetchMarket: (id: string) => Promise<void>;
   createMarket: (data: CreateMarketDto) => Promise<void>;
   executeTrade: (marketId: string, deltaQ: string[]) => Promise<void>;
   unmakeMarket: (marketId: string) => Promise<void>;
+  clearSelectedMarket: () => void;
 }
 
 const extractMarketList = (payload: Record<string, unknown> | unknown): Record<string, unknown>[] => {
@@ -33,6 +35,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
   markets: [],
   selectedMarket: null,
   isLoading: false,
+  loadingMarketId: null,
   fetchMarkets: async () => {
     set({ isLoading: true });
     try {
@@ -51,7 +54,7 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
     }
   },
   fetchMarket: async (id) => {
-    set({ isLoading: true });
+    set({ loadingMarketId: id });
     try {
       const marketResponse = await api.get(`/markets/${id}`);
 
@@ -63,10 +66,10 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
         markets: state.markets.some((entry) => entry.id === id)
           ? state.markets.map((entry) => (entry.id === id ? { ...entry, ...selectedMarket } : entry))
           : [selectedMarket, ...state.markets],
-        isLoading: false,
+        loadingMarketId: null,
       }));
     } catch (error) {
-      set({ isLoading: false });
+      set({ loadingMarketId: null });
       toast.error(getApiErrorMessage(error, 'Unable to load market details.'));
     }
   },
@@ -114,5 +117,8 @@ export const useMarketStore = create<MarketStore>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+  clearSelectedMarket: () => {
+    set({ selectedMarket: null });
   },
 }));

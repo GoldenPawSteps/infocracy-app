@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/hooks/useAuth';
+import { startRouteTransition } from '@/lib/navigation';
 
 export default function HomePage() {
   const router = useRouter();
@@ -17,7 +18,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading) {
-      router.replace(user ? '/dashboard' : '/signin');
+      const destinationPath = user ? '/dashboard' : '/signin';
+      startRouteTransition(destinationPath);
+      router.replace(destinationPath);
     }
   }, [isLoading, router, user]);
 

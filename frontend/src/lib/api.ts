@@ -34,7 +34,30 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const responseStatus = error.response?.status;
+    const requestConfig = error.config;
+
+    if (responseStatus === 429 && requestConfig) {
+      const method = requestConfig.method?.toLowerCase();
+      const retriableRequest = method === 'get';
+      const retryCount = (requestConfig as typeof requestConfig & { _rateLimitRetryCount?: number })._rateLimitRetryCount ?? 0;
+
+      if (retriableRequest && retryCount < 1) {
+        const retryAfterHeader = error.response?.headers?.['retry-after'];
+        const retryAfterSeconds = Number.parseFloat(String(retryAfterHeader ?? ''));
+        const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : 600;
+
+        (requestConfig as typeof requestConfig & { _rateLimitRetryCount?: number })._rateLimitRetryCount = retryCount + 1;
+
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, retryDelayMs);
+        });
+
+        return api(requestConfig);
+      }
+    }
+
+    if (responseStatus === 401 && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       if (window.location.pathname !== '/signin') {
         window.location.href = '/signin';

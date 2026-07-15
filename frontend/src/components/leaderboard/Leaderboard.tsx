@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import type { LeaderboardEntry } from '@/lib/types';
 import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
@@ -25,14 +26,14 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
           entries.map((entry) => {
             const isCurrentUser = entry.userId === currentUserId;
             return (
-              <div
-                key={entry.userId}
-                className={`rounded-2xl border p-4 transition ${
-                  isCurrentUser
-                    ? 'border-gold/40 bg-gold/5 shadow-[0_0_0_1px_rgba(212,160,23,0.18)]'
-                    : 'border-border bg-[#141414]'
-                }`}
-              >
+              <Link key={entry.userId} href={`/profile?user=${entry.userId}`}>
+                <div
+                  className={`cursor-pointer rounded-2xl border p-4 transition hover:shadow-lg ${
+                    isCurrentUser
+                      ? 'border-gold/40 bg-gold/5 shadow-[0_0_0_1px_rgba(212,160,23,0.18)] hover:border-gold/60'
+                      : 'border-border bg-[#141414] hover:border-gold/40 hover:bg-[#1a1a1a]'
+                  }`}
+                >
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Rank #{entry.rank}</p>
@@ -49,6 +50,7 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
                   </div>
                 </div>
               </div>
+              </Link>
             );
           })
         ) : (

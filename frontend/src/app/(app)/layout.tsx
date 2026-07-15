@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 
 import { Header } from '@/components/layout/Header';
 import { Navigation } from '@/components/layout/Navigation';
+import { PageTransition } from '@/components/layout/PageTransition';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
+import { startRouteTransition } from '@/lib/navigation';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -40,6 +42,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hasResolvedAuth && !isLoading && !user) {
+      startRouteTransition('/signin');
       router.replace('/signin');
     }
   }, [hasResolvedAuth, isLoading, router, user]);
@@ -66,7 +69,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <div className="md:hidden">
             <Navigation vertical={false} />
           </div>
-          {children}
+          <PageTransition variant="app">{children}</PageTransition>
         </main>
       </div>
     </div>

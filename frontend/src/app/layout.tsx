@@ -5,6 +5,7 @@ import type { Viewport } from 'next';
 import type { ReactNode } from 'react';
 
 import '@/app/globals.css';
+import { RouteProgress } from '@/components/layout/RouteProgress';
 import { AppToaster } from '@/components/providers/AppToaster';
 import { AppProviders } from '@/components/providers/AppProviders';
 
@@ -34,7 +35,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className="font-sans text-text-primary">
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          <RouteProgress />
+          {children}
+        </AppProviders>
         <AppToaster />
       </body>
     </html>

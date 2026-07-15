@@ -53,6 +53,8 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { markets, isLoading, fetchMarkets } = useMarkets();
   const [marketSort, setMarketSort] = useState<MarketSortOption>('legitimacy');
+  const [marketStatusFilter, setMarketStatusFilter] = useState<'all' | 'active' | 'unmade'>('all');
+  const [marketSearch, setMarketSearch] = useState<string>('');
   const entries = useLeaderboardStore((state) => state.entries);
   const leaderboardLoading = useLeaderboardStore((state) => state.isLoading);
   const fetchLeaderboard = useLeaderboardStore((state) => state.fetchLeaderboard);
@@ -61,14 +63,23 @@ export default function DashboardPage() {
     void Promise.all([fetchMarkets(), fetchLeaderboard()]);
   }, [fetchLeaderboard, fetchMarkets]);
 
+  const filteredMarkets = useMemo(
+    () =>
+      markets.filter((market) => {
+        if (marketStatusFilter === 'active' && market.isUnmade) return false;
+        if (marketStatusFilter === 'unmade' && !market.isUnmade) return false;
+        if (marketSearch && !market.title.toLowerCase().includes(marketSearch.toLowerCase())) return false;
+        return true;
+      }),
+    [markets, marketStatusFilter, marketSearch],
+  );
+  const sortedMarkets = useMemo(() => sortMarkets(filteredMarkets, marketSort), [filteredMarkets, marketSort]);
   const activeMarkets = markets.filter((market) => !market.isUnmade);
   const archivedMarkets = markets.filter((market) => market.isUnmade);
-  const sortedActiveMarkets = useMemo(() => sortMarkets(activeMarkets, marketSort), [activeMarkets, marketSort]);
-  const sortedArchivedMarkets = useMemo(() => sortMarkets(archivedMarkets, marketSort), [archivedMarkets, marketSort]);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="space-y-6">
+      <div className="space-y-6 stagger-enter">
         <Card className="p-6 md:p-8" glow>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -100,9 +111,31 @@ export default function DashboardPage() {
         </Card>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-semibold text-text-primary">Active Markets</h2>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-2xl font-semibold text-text-primary">Markets</h2>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <input
+                type="text"
+                placeholder="Search markets..."
+                value={marketSearch}
+                onChange={(e) => setMarketSearch(e.target.value)}
+                className="rounded-xl border border-border bg-[#121212] px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm text-text-secondary" htmlFor="market-status-filter">
+                Status
+              </label>
+              <select
+                id="market-status-filter"
+                value={marketStatusFilter}
+                onChange={(event) => setMarketStatusFilter(event.target.value as 'all' | 'active' | 'unmade')}
+                className="h-10 rounded-xl border border-border bg-[#121212] px-3 text-sm text-text-primary outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="unmade">Unmade</option>
+              </select>
               <label className="text-sm text-text-secondary" htmlFor="market-sort">
                 Sort by
               </label>
@@ -125,11 +158,11 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4">
-            {sortedActiveMarkets.length ? (
-              sortedActiveMarkets.map((market) => <MarketCard key={market.id} market={market} />)
+            {sortedMarkets.length ? (
+              sortedMarkets.map((market) => <MarketCard key={market.id} market={market} />)
             ) : (
               <Card className="border-dashed p-8 text-center">
-                <h3 className="text-xl font-semibold text-text-primary">No active markets</h3>
+                <h3 className="text-xl font-semibold text-text-primary">No markets</h3>
                 <p className="mt-3 text-sm leading-6 text-text-secondary">
                   Create a new market to begin collecting structured belief across your community.
                 </p>
@@ -142,28 +175,9 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-semibold text-text-primary">Archived Markets</h2>
-          </div>
-
-          <div className="grid gap-4">
-            {sortedArchivedMarkets.length ? (
-              sortedArchivedMarkets.map((market) => <MarketCard key={market.id} market={market} />)
-            ) : (
-              <Card className="border-dashed p-8 text-center">
-                <h3 className="text-xl font-semibold text-text-primary">No archived markets</h3>
-                <p className="mt-3 text-sm leading-6 text-text-secondary">
-                  Unmade markets will appear here so you can still open their details and review outcomes.
-                </p>
-              </Card>
-            )}
-          </div>
-        </section>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 stagger-enter">
         <div className="xl:sticky xl:top-6">
           <Leaderboard entries={entries} currentUserId={user?.id} />
         </div>

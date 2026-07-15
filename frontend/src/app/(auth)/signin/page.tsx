@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
+import { startRouteTransition } from '@/lib/navigation';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (user) {
+      startRouteTransition('/dashboard');
       router.replace('/dashboard');
     }
   }, [router, user]);
@@ -27,6 +29,7 @@ export default function SignInPage() {
 
     try {
       await login(email, password);
+      startRouteTransition('/dashboard');
       router.push('/dashboard');
     } catch {
       return;

@@ -25,6 +25,10 @@ const signinSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password must be at most 128 characters'),
 });
 
+const userParamsSchema = z.object({
+  userId: z.string().min(1),
+});
+
 function authCookieOptions() {
   return {
     httpOnly: true,
@@ -100,6 +104,22 @@ export function createAuthRouter(services: AppServices): Router {
 
   router.get('/me', requireAuth, async (req, res) => {
     const snapshot = await services.leaderboardService.getUserSnapshot(req.authUser!.sub);
+    res.json({ user: snapshot });
+  });
+
+  router.get('/users/:userId', requireAuth, validate({ params: userParamsSchema }), async (req, res) => {
+    const snapshot = await services.leaderboardService.getUserSnapshot(req.params.userId);
+
+    if (snapshot.id !== req.authUser!.sub) {
+      res.json({
+        user: {
+          ...snapshot,
+          email: '',
+        },
+      });
+      return;
+    }
+
     res.json({ user: snapshot });
   });
 

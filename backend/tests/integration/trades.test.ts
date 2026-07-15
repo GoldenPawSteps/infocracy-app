@@ -289,16 +289,16 @@ describe('trade integration', () => {
 
     const makerBalanceAfter = await prisma.balance.findUnique({ where: { userId: maker.id } });
     const expectedCost = cost(['1', '0'], '1').toString();
-    const expectedMakerInitialTradeCost = new Decimal(expectedCost).minus(new Decimal('1').times(new Decimal(2).ln())).toString();
     expect(market.initialCost).toBe(expectedCost);
     expect(makerBalanceAfter.balance).toBe(new Decimal(makerBalanceBeforeValue).minus(expectedCost).toString());
 
     const marketDetail = await marketService.getMarketById(market.id);
-    expect(marketDetail.trades).toHaveLength(1);
-    expect(marketDetail.trades[0].takerId).toBe(maker.id);
-    expect(marketDetail.trades[0].takerUsername).toBe('maker');
-    expect(marketDetail.trades[0].deltaQ).toEqual(['1', '0']);
-    expect(marketDetail.trades[0].cost).toBe(expectedMakerInitialTradeCost);
+    expect(marketDetail.trades).toHaveLength(0);
+    expect(marketDetail.actions).toHaveLength(1);
+    expect(marketDetail.actions[0].type).toBe('make');
+    expect(marketDetail.actions[0].agentId).toBe(maker.id);
+    expect(marketDetail.actions[0].shares).toEqual(['1', '0']);
+    expect(marketDetail.actions[0].legitimacy).toBe(expectedCost);
   });
 
   it('preserves trade history in market detail after market is unmade', async () => {

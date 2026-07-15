@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
+import { startRouteTransition } from '@/lib/navigation';
 import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
 
 export function Header() {
@@ -17,6 +18,7 @@ export function Header() {
     setIsSigningOut(true);
     try {
       await logout();
+      startRouteTransition('/signin');
       router.push('/signin');
     } finally {
       setIsSigningOut(false);

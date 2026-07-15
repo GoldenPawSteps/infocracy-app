@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
@@ -32,6 +33,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [selectedActionAgents, setSelectedActionAgents] = useState<Record<string, string>>({});
   const [actionAgentFilter, setActionAgentFilter] = useState<string>('all');
+  const [actionSearch, setActionSearch] = useState<string>('');
   const [visibleActionCount, setVisibleActionCount] = useState<number>(ACTION_HISTORY_PAGE_SIZE);
   const [sampleResult, setSampleResult] = useState<{
     outcomeIndex: number;
@@ -58,7 +60,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
 
   useEffect(() => {
     setVisibleActionCount(ACTION_HISTORY_PAGE_SIZE);
-  }, [actionAgentFilter]);
+  }, [actionAgentFilter, actionSearch]);
 
   const actionAgentOptions = useMemo(() => {
     const byId = new Map<string, string>();
@@ -72,8 +74,13 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   }, [market.actions]);
 
   const filteredActions = useMemo(
-    () => (market.actions ?? []).filter((action) => actionAgentFilter === 'all' || action.agentId === actionAgentFilter),
-    [actionAgentFilter, market.actions],
+    () =>
+      (market.actions ?? []).filter((action) => {
+        if (actionAgentFilter !== 'all' && action.agentId !== actionAgentFilter) return false;
+        if (actionSearch && !action.agentUsername.toLowerCase().includes(actionSearch.toLowerCase())) return false;
+        return true;
+      }),
+    [actionAgentFilter, actionSearch, market.actions],
   );
   const visibleFilteredActions = useMemo(() => filteredActions.slice(0, visibleActionCount), [filteredActions, visibleActionCount]);
 
@@ -267,10 +274,14 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
         <Card className="min-w-0 p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
-            <div className="flex min-w-0 items-center gap-2">
-              <label htmlFor="action-history-agent-filter" className="text-xs uppercase tracking-[0.16em] text-text-muted">
-                Agent
-              </label>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <input
+                type="text"
+                placeholder="Search agents..."
+                value={actionSearch}
+                onChange={(e) => setActionSearch(e.target.value)}
+                className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted outline-none transition focus:border-gold/50 focus:outline-none"
+              />
               <select
                 id="action-history-agent-filter"
                 className="w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none sm:w-auto"
@@ -293,7 +304,8 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
           ) : null}
           <div className="mt-5 space-y-4">
             {visibleFilteredActions.map((action) => (
-              <div key={action.id} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
+              <Link key={action.id} href={`/profile?user=${action.agentId}`}>
+                <div className="min-w-0 cursor-pointer rounded-2xl border border-border bg-[#141414] p-4 transition hover:border-gold/40 hover:bg-[#1a1a1a]">
                 {(() => {
                   const selectedAgentId = selectedActionAgents[action.id];
                   const selectedParticipant =
@@ -349,20 +361,21 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   <ActionPreview
                     title={action.type === 'take' ? 'Take preview' : action.type === 'make' ? 'Make preview' : 'Unmake preview'}
                     contextLabel={`${selectedParticipant?.agentUsername ?? action.agentUsername} (${(selectedParticipant?.agentId ?? action.agentId) === market.makerId ? 'maker' : 'taker'})`}
-                    legitimacy={action.legitimacy}
+                    legitimacy={parseFloat(action.legitimacy)}
                     probabilities={market.outcomes.map((outcome, index) => ({
                       label: outcome.name,
                       value: action.probabilities[index] ?? 0,
                     }))}
-                    balanceChange={selectedParticipant?.balanceChange ?? action.balanceChange}
-                    influenceChange={selectedParticipant?.influenceChange ?? action.influenceChange}
-                    powerChange={selectedParticipant?.powerChange ?? action.powerChange}
+                    balanceChange={parseFloat(selectedParticipant?.balanceChange ?? action.balanceChange)}
+                    influenceChange={parseFloat(selectedParticipant?.influenceChange ?? action.influenceChange)}
+                    powerChange={parseFloat(selectedParticipant?.powerChange ?? action.powerChange)}
                   />
                 </div>
                     </>
                   );
                 })()}
               </div>
+            </Link>
             ))}
             {filteredActions.length === 0 ? (
               <div className="rounded-2xl border border-border bg-[#141414] p-4 text-sm text-text-secondary">

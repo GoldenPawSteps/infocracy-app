@@ -134,7 +134,7 @@ export function LineChart({ labels, series, valueFormatter = (value) => value.to
         {activeValues.map((entry) => (
           <span key={`${entry.id}-legend`} className="inline-flex items-center gap-2">
             <span className={`h-0.5 w-4 rounded ${entry.legendColorClassName}`} />
-            {entry.id}: {entry.legendValueFormatter(entry.displayValue)}
+            {entry.id} {entry.legendValueFormatter(entry.displayValue)}
           </span>
         ))}
       </div>

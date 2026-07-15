@@ -501,19 +501,19 @@ export default function ProfilePage() {
                   labels={agentChartData.labels}
                   series={[
                     {
-                      id: 'Balance',
+                      id: '💰',
                       colorClassName: 'stroke-amber-300',
                       legendColorClassName: 'bg-amber-300',
                       values: agentChartData.balanceSeries,
                     },
                     {
-                      id: 'Influence',
+                      id: '🧭',
                       colorClassName: 'stroke-cyan-300',
                       legendColorClassName: 'bg-cyan-300',
                       values: agentChartData.influenceSeries,
                     },
                     {
-                      id: 'Power',
+                      id: '⚡',
                       colorClassName: 'stroke-rose-300',
                       legendColorClassName: 'bg-rose-300',
                       values: agentChartData.powerSeries,

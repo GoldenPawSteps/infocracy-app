@@ -18,18 +18,12 @@ export default function MarketPage({ params }: MarketPageProps) {
   const market = useMarketStore((state) => state.selectedMarket);
   const loadingMarketId = useMarketStore((state) => state.loadingMarketId);
   const fetchMarket = useMarketStore((state) => state.fetchMarket);
-  const clearSelectedMarket = useMarketStore((state) => state.clearSelectedMarket);
 
   useEffect(() => {
-    // If we already have the market cached and it matches the route, don't refetch
-    if (market && market.id === params.id) {
-      return;
-    }
-    
-    // Otherwise, clear the old market and fetch the new one
-    clearSelectedMarket();
+    // Always refresh route market details so charts have complete action history,
+    // while still allowing cached content to render during refresh.
     void fetchMarket(params.id);
-  }, [fetchMarket, clearSelectedMarket, params.id, market]);
+  }, [fetchMarket, params.id]);
 
   const loadingState = (
     <div className="space-y-6">
@@ -59,14 +53,14 @@ export default function MarketPage({ params }: MarketPageProps) {
     </div>
   );
 
-  // Show loading only if we're actively fetching this specific market
-  if (loadingMarketId === params.id) {
-    return loadingState;
-  }
-
   // Show the market if we have it
   if (market && market.id === params.id) {
     return <MarketDetail market={market} currentUserId={user?.id} />;
+  }
+
+  // Show loading only if we're actively fetching this specific market
+  if (loadingMarketId === params.id) {
+    return loadingState;
   }
 
   // If we get here, market is not loaded and not loading - show loading placeholder

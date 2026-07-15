@@ -36,10 +36,20 @@ interface ProfileSnapshot {
   power: string;
 }
 
-type MarketSortOption = 'legitimacy' | 'newest' | 'oldest' | 'liquidity' | 'title';
+type MarketSortOption = 'legitimacy' | 'entropy' | 'newest' | 'oldest' | 'liquidity' | 'title';
 type ChartRangeOption = '7d' | '30d' | 'all';
 
 const POSITION_PAGE_SIZE = 10;
+
+function computeEntropy(probabilities: number[]) {
+  return probabilities.reduce((sum, probability) => {
+    if (!Number.isFinite(probability) || probability <= 0) {
+      return sum;
+    }
+
+    return sum - probability * Math.log(probability);
+  }, 0);
+}
 
 function sortMarkets(markets: Market[], sortBy: MarketSortOption) {
   const sorted = [...markets];
@@ -59,6 +69,10 @@ function sortMarkets(markets: Market[], sortBy: MarketSortOption) {
 
     if (sortBy === 'liquidity') {
       return Number(b.liquidityB) - Number(a.liquidityB);
+    }
+
+    if (sortBy === 'entropy') {
+      return computeEntropy(b.probabilities) - computeEntropy(a.probabilities);
     }
 
     const legitimacyA = computeLmsrLegitimacy(
@@ -719,6 +733,7 @@ export default function ProfilePage() {
                     onChange={(event) => setPositionSort(event.target.value as MarketSortOption)}
                   >
                     <option value="legitimacy">Legitimacy</option>
+                    <option value="entropy">Entropy</option>
                     <option value="newest">Newest</option>
                     <option value="oldest">Oldest</option>
                     <option value="liquidity">Liquidity</option>

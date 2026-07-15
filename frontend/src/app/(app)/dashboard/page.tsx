@@ -13,7 +13,17 @@ import type { Market } from '@/lib/types';
 import { computeLmsrLegitimacy } from '@/lib/utils';
 import { useLeaderboardStore } from '@/store/leaderboardStore';
 
-type MarketSortOption = 'legitimacy' | 'newest' | 'oldest' | 'liquidity' | 'title';
+type MarketSortOption = 'legitimacy' | 'entropy' | 'newest' | 'oldest' | 'liquidity' | 'title';
+
+function computeEntropy(probabilities: number[]) {
+  return probabilities.reduce((sum, probability) => {
+    if (!Number.isFinite(probability) || probability <= 0) {
+      return sum;
+    }
+
+    return sum - probability * Math.log(probability);
+  }, 0);
+}
 
 function sortMarkets(markets: Market[], sortBy: MarketSortOption) {
   const sorted = [...markets];
@@ -33,6 +43,10 @@ function sortMarkets(markets: Market[], sortBy: MarketSortOption) {
 
     if (sortBy === 'liquidity') {
       return Number(b.liquidityB) - Number(a.liquidityB);
+    }
+
+    if (sortBy === 'entropy') {
+      return computeEntropy(b.probabilities) - computeEntropy(a.probabilities);
     }
 
     const legitimacyA = computeLmsrLegitimacy(
@@ -146,6 +160,7 @@ export default function DashboardPage() {
                 className="h-10 rounded-xl border border-border bg-[#121212] px-3 text-sm text-text-primary outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20"
               >
                 <option value="legitimacy">Legitimacy</option>
+                <option value="entropy">Entropy</option>
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="liquidity">Liquidity</option>

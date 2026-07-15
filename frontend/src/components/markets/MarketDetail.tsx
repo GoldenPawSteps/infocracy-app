@@ -29,6 +29,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const [isSampling, setIsSampling] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [selectedActionAgents, setSelectedActionAgents] = useState<Record<string, string>>({});
+  const [actionAgentFilter, setActionAgentFilter] = useState<string>('all');
   const [sampleResult, setSampleResult] = useState<{
     outcomeIndex: number;
     outcomeName: string;
@@ -48,7 +49,24 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     setSampleResult(null);
     setSampleError(null);
     setSelectedActionAgents({});
+    setActionAgentFilter('all');
   }, [market.id]);
+
+  const actionAgentOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    (market.actions ?? []).forEach((action) => {
+      if (!byId.has(action.agentId)) {
+        byId.set(action.agentId, action.agentUsername);
+      }
+    });
+
+    return Array.from(byId.entries()).map(([id, username]) => ({ id, username }));
+  }, [market.actions]);
+
+  const filteredActions = useMemo(
+    () => (market.actions ?? []).filter((action) => actionAgentFilter === 'all' || action.agentId === actionAgentFilter),
+    [actionAgentFilter, market.actions],
+  );
 
   const decisionDraft = useMemo(() => {
     const tieEpsilon = 0.000001;
@@ -238,9 +256,29 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
+            <div className="flex items-center gap-2">
+              <label htmlFor="action-history-agent-filter" className="text-xs uppercase tracking-[0.16em] text-text-muted">
+                Agent
+              </label>
+              <select
+                id="action-history-agent-filter"
+                className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                value={actionAgentFilter}
+                onChange={(event) => setActionAgentFilter(event.target.value)}
+              >
+                <option value="all">All agents</option>
+                {actionAgentOptions.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="mt-5 space-y-4">
-            {(market.actions ?? []).map((action) => (
+            {filteredActions.map((action) => (
               <div key={action.id} className="rounded-2xl border border-border bg-[#141414] p-4">
                 {(() => {
                   const selectedAgentId = selectedActionAgents[action.id];
@@ -312,6 +350,11 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 })()}
               </div>
             ))}
+            {filteredActions.length === 0 ? (
+              <div className="rounded-2xl border border-border bg-[#141414] p-4 text-sm text-text-secondary">
+                No actions found for the selected agent.
+              </div>
+            ) : null}
           </div>
         </Card>
       </div>

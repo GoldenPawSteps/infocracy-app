@@ -14,6 +14,8 @@ import { ActionPreview } from '@/components/markets/ActionPreview';
 import { computeLmsrLegitimacy, formatDate, formatDecimal, getApiErrorMessage } from '@/lib/utils';
 import { useMarketStore } from '@/store/marketStore';
 
+const ACTION_HISTORY_PAGE_SIZE = 10;
+
 interface MarketDetailProps {
   market: Market;
   currentUserId?: string;
@@ -30,6 +32,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [selectedActionAgents, setSelectedActionAgents] = useState<Record<string, string>>({});
   const [actionAgentFilter, setActionAgentFilter] = useState<string>('all');
+  const [visibleActionCount, setVisibleActionCount] = useState<number>(ACTION_HISTORY_PAGE_SIZE);
   const [sampleResult, setSampleResult] = useState<{
     outcomeIndex: number;
     outcomeName: string;
@@ -50,7 +53,12 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     setSampleError(null);
     setSelectedActionAgents({});
     setActionAgentFilter('all');
+    setVisibleActionCount(ACTION_HISTORY_PAGE_SIZE);
   }, [market.id]);
+
+  useEffect(() => {
+    setVisibleActionCount(ACTION_HISTORY_PAGE_SIZE);
+  }, [actionAgentFilter]);
 
   const actionAgentOptions = useMemo(() => {
     const byId = new Map<string, string>();
@@ -67,6 +75,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     () => (market.actions ?? []).filter((action) => actionAgentFilter === 'all' || action.agentId === actionAgentFilter),
     [actionAgentFilter, market.actions],
   );
+  const visibleFilteredActions = useMemo(() => filteredActions.slice(0, visibleActionCount), [filteredActions, visibleActionCount]);
 
   const decisionDraft = useMemo(() => {
     const tieEpsilon = 0.000001;
@@ -255,16 +264,16 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <Card className="min-w-0 p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <label htmlFor="action-history-agent-filter" className="text-xs uppercase tracking-[0.16em] text-text-muted">
                 Agent
               </label>
               <select
                 id="action-history-agent-filter"
-                className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                className="w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none sm:w-auto"
                 value={actionAgentFilter}
                 onChange={(event) => setActionAgentFilter(event.target.value)}
               >
@@ -277,9 +286,14 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
               </select>
             </div>
           </div>
+          {filteredActions.length > 0 ? (
+            <p className="mt-3 text-sm text-text-secondary">
+              Showing {Math.min(visibleFilteredActions.length, filteredActions.length)} of {filteredActions.length} actions
+            </p>
+          ) : null}
           <div className="mt-5 space-y-4">
-            {filteredActions.map((action) => (
-              <div key={action.id} className="rounded-2xl border border-border bg-[#141414] p-4">
+            {visibleFilteredActions.map((action) => (
+              <div key={action.id} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
                 {(() => {
                   const selectedAgentId = selectedActionAgents[action.id];
                   const selectedParticipant =
@@ -289,12 +303,12 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
 
                   return (
                     <>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs uppercase tracking-[0.22em] text-text-muted">{action.type}</p>
-                    <p className="mt-2 font-medium text-text-primary">{action.agentUsername}</p>
+                    <p className="mt-2 break-words font-medium text-text-primary">{action.agentUsername}</p>
                   </div>
-                  <p className="text-sm text-text-secondary">{formatDate(action.createdAt)}</p>
+                  <p className="shrink-0 text-sm text-text-secondary">{formatDate(action.createdAt)}</p>
                 </div>
 
                 {action.participantChanges.length > 1 ? (
@@ -304,7 +318,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                     </label>
                     <select
                       id={`action-agent-${action.id}`}
-                      className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                      className="w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
                       value={selectedParticipant?.agentId ?? ''}
                       onChange={(event) =>
                         setSelectedActionAgents((current) => ({
@@ -325,8 +339,8 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 <div className="mt-4 grid gap-2 text-sm text-text-secondary">
                   {action.shares.map((share, index) => (
                     <div key={`${action.id}-${index}`} className="flex items-center justify-between gap-3">
-                      <span>{market.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
-                      <span className="text-text-primary">{formatDecimal(share, 4)}</span>
+                      <span className="min-w-0 break-words">{market.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
+                      <span className="shrink-0 text-text-primary">{formatDecimal(share, 4)}</span>
                     </div>
                   ))}
                 </div>
@@ -354,6 +368,16 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
               <div className="rounded-2xl border border-border bg-[#141414] p-4 text-sm text-text-secondary">
                 No actions found for the selected agent.
               </div>
+            ) : null}
+            {filteredActions.length > visibleActionCount ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => setVisibleActionCount((count) => count + ACTION_HISTORY_PAGE_SIZE)}
+              >
+                Show more actions
+              </Button>
             ) : null}
           </div>
         </Card>

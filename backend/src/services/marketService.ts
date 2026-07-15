@@ -318,6 +318,25 @@ export class MarketService {
       const takerBalanceDelta = tradeCostValue.negated();
       const takerInfluenceDelta = nextInfluence.minus(currentInfluence);
       const takerPowerDelta = takerBalanceDelta.plus(takerInfluenceDelta);
+      const priorTakerIds = Array.from(positionsByUser.keys()).filter((userId) => userId !== market.makerId);
+      const selectableTakerIds = Array.from(new Set<string>([...priorTakerIds, takerId]));
+      const priorTakerChanges = selectableTakerIds
+        .filter((userId) => userId !== takerId)
+        .map((userId) => {
+          const beforeShares = positionsByUser.get(userId) ?? zeroVector(outcomes.length);
+          const afterShares = nextPositionsByUser.get(userId) ?? zeroVector(outcomes.length);
+          const beforeInfluence = takerInfluence(currentProbabilitiesBeforeTrade, beforeShares);
+          const afterInfluence = takerInfluence(nextProbabilities, afterShares);
+          const influenceDelta = afterInfluence.minus(beforeInfluence);
+
+          return buildParticipantChange(
+            userId,
+            userMap.get(userId) ?? 'Unknown',
+            new Decimal(0),
+            influenceDelta,
+            influenceDelta,
+          );
+        });
 
       actions.push({
         id: trade.id,
@@ -346,6 +365,7 @@ export class MarketService {
             makerInfluenceDelta,
             makerInfluenceDelta,
           ),
+          ...priorTakerChanges,
         ],
       });
 
@@ -357,25 +377,21 @@ export class MarketService {
       const currentCost = cost(qState, market.liquidityB);
       const takerInfluences: Decimal[] = [];
       const takerSettlements: Array<{ userId: string; username: string; influence: Decimal }> = [];
+      const takerIds = Array.from(positionsByUser.keys()).filter((userId) => userId !== market.makerId);
 
-      for (const position of positions) {
-        if (position.userId === market.makerId) {
-          continue;
-        }
-
-        const shares = parseStringArray(position.shares);
+      for (const takerId of takerIds) {
+        const shares = positionsByUser.get(takerId) ?? zeroVector(outcomes.length);
         const influence = takerInfluence(currentProbabilities, shares);
         takerInfluences.push(influence);
         takerSettlements.push({
-          userId: String(position.userId),
-          username: userMap.get(String(position.userId)) ?? 'Unknown',
+          userId: takerId,
+          username: userMap.get(takerId) ?? 'Unknown',
           influence,
         });
       }
 
       const makerPayout = makerInfluence(currentCost, takerInfluences);
-      const makerPosition = positions.find((position: any) => position.userId === market.makerId);
-      const makerShares = makerPosition ? parseStringArray(makerPosition.shares) : zeroVector(outcomes.length);
+      const makerShares = positionsByUser.get(market.makerId) ?? zeroVector(outcomes.length);
       const participantChanges = [
         buildParticipantChange(
           market.makerId,

@@ -32,6 +32,28 @@ function cloneVector(values: string[]): string[] {
   return values.map((value) => String(value));
 }
 
+function buildParticipantChange(
+  agentId: string,
+  agentUsername: string,
+  balanceChange: Decimal,
+  influenceChange: Decimal,
+  powerChange: Decimal,
+): {
+  agentId: string;
+  agentUsername: string;
+  balanceChange: string;
+  influenceChange: string;
+  powerChange: string;
+} {
+  return {
+    agentId,
+    agentUsername,
+    balanceChange: balanceChange.toString(),
+    influenceChange: influenceChange.toString(),
+    powerChange: powerChange.toString(),
+  };
+}
+
 export class MarketService {
   constructor(private readonly prisma: any) {}
 
@@ -235,6 +257,13 @@ export class MarketService {
       balanceChange: string;
       influenceChange: string;
       powerChange: string;
+      participantChanges: Array<{
+        agentId: string;
+        agentUsername: string;
+        balanceChange: string;
+        influenceChange: string;
+        powerChange: string;
+      }>;
     }> = [
       {
         id: `${market.id}:make`,
@@ -248,6 +277,15 @@ export class MarketService {
         balanceChange: initialCost.negated().toString(),
         influenceChange: initialCost.toString(),
         powerChange: '0',
+        participantChanges: [
+          buildParticipantChange(
+            market.makerId,
+            userMap.get(market.makerId) ?? 'Unknown',
+            initialCost.negated(),
+            initialCost,
+            new Decimal(0),
+          ),
+        ],
       },
     ];
 
@@ -266,6 +304,20 @@ export class MarketService {
       const tradeCostValue = tradeCost(qState, deltaQ, market.liquidityB);
       const currentInfluence = takerInfluence(currentProbabilitiesBeforeTrade, currentShares);
       const nextInfluence = takerInfluence(nextProbabilities, nextShares);
+      const currentTakerInfluences = Array.from(positionsByUser.entries())
+        .filter(([userId]) => userId !== market.makerId)
+        .map(([, shares]) => takerInfluence(currentProbabilitiesBeforeTrade, shares));
+      const nextPositionsByUser = new Map(positionsByUser);
+      nextPositionsByUser.set(takerId, nextShares);
+      const nextTakerInfluences = Array.from(nextPositionsByUser.entries())
+        .filter(([userId]) => userId !== market.makerId)
+        .map(([, shares]) => takerInfluence(nextProbabilities, shares));
+      const currentMakerInfluence = makerInfluence(cost(qState, market.liquidityB), currentTakerInfluences);
+      const nextMakerInfluence = makerInfluence(cost(nextQState, market.liquidityB), nextTakerInfluences);
+      const makerInfluenceDelta = nextMakerInfluence.minus(currentMakerInfluence);
+      const takerBalanceDelta = tradeCostValue.negated();
+      const takerInfluenceDelta = nextInfluence.minus(currentInfluence);
+      const takerPowerDelta = takerBalanceDelta.plus(takerInfluenceDelta);
 
       actions.push({
         id: trade.id,
@@ -276,9 +328,25 @@ export class MarketService {
         shares: cloneVector(deltaQ),
         legitimacy: cost(nextQState, market.liquidityB).toString(),
         probabilities: nextProbabilities.map((value) => value.toString()),
-        balanceChange: tradeCostValue.negated().toString(),
-        influenceChange: nextInfluence.minus(currentInfluence).toString(),
-        powerChange: tradeCostValue.negated().plus(nextInfluence.minus(currentInfluence)).toString(),
+        balanceChange: takerBalanceDelta.toString(),
+        influenceChange: takerInfluenceDelta.toString(),
+        powerChange: takerPowerDelta.toString(),
+        participantChanges: [
+          buildParticipantChange(
+            takerId,
+            userMap.get(takerId) ?? 'Unknown',
+            takerBalanceDelta,
+            takerInfluenceDelta,
+            takerPowerDelta,
+          ),
+          buildParticipantChange(
+            market.makerId,
+            userMap.get(market.makerId) ?? 'Unknown',
+            new Decimal(0),
+            makerInfluenceDelta,
+            makerInfluenceDelta,
+          ),
+        ],
       });
 
       positionsByUser.set(takerId, nextShares);
@@ -288,6 +356,7 @@ export class MarketService {
     if (market.isUnmade && market.unmadeAt) {
       const currentCost = cost(qState, market.liquidityB);
       const takerInfluences: Decimal[] = [];
+      const takerSettlements: Array<{ userId: string; username: string; influence: Decimal }> = [];
 
       for (const position of positions) {
         if (position.userId === market.makerId) {
@@ -297,11 +366,34 @@ export class MarketService {
         const shares = parseStringArray(position.shares);
         const influence = takerInfluence(currentProbabilities, shares);
         takerInfluences.push(influence);
+        takerSettlements.push({
+          userId: String(position.userId),
+          username: userMap.get(String(position.userId)) ?? 'Unknown',
+          influence,
+        });
       }
 
       const makerPayout = makerInfluence(currentCost, takerInfluences);
       const makerPosition = positions.find((position: any) => position.userId === market.makerId);
       const makerShares = makerPosition ? parseStringArray(makerPosition.shares) : zeroVector(outcomes.length);
+      const participantChanges = [
+        buildParticipantChange(
+          market.makerId,
+          userMap.get(market.makerId) ?? 'Unknown',
+          makerPayout,
+          makerPayout.negated(),
+          new Decimal(0),
+        ),
+        ...takerSettlements.map((settlement) =>
+          buildParticipantChange(
+            settlement.userId,
+            settlement.username,
+            settlement.influence,
+            settlement.influence.negated(),
+            new Decimal(0),
+          ),
+        ),
+      ];
 
       actions.push({
         id: `${market.id}:unmake:${market.makerId}`,
@@ -315,6 +407,7 @@ export class MarketService {
         balanceChange: makerPayout.toString(),
         influenceChange: makerPayout.negated().toString(),
         powerChange: '0',
+        participantChanges,
       });
     }
 

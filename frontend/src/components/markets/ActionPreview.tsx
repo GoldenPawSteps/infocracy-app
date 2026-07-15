@@ -5,6 +5,7 @@ import { formatDecimal, formatSignedDecimal } from '@/lib/utils';
 
 interface ActionPreviewProps {
   title: string;
+  contextLabel?: string;
   legitimacy: number;
   probabilities: Array<{
     label: string;
@@ -17,6 +18,7 @@ interface ActionPreviewProps {
 
 export function ActionPreview({
   title,
+  contextLabel,
   legitimacy,
   probabilities,
   balanceChange,
@@ -26,6 +28,7 @@ export function ActionPreview({
   return (
     <div className="space-y-3 rounded-2xl border border-gold/20 bg-gold/5 p-4 text-sm">
       <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gold-light">{title}</h4>
+      {contextLabel ? <p className="text-xs text-text-secondary">Viewing: {contextLabel}</p> : null}
 
       <div className="space-y-3 rounded-xl border border-border bg-[#141414] p-3">
         <div className="flex items-center justify-between gap-4">

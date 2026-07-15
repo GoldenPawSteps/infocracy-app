@@ -43,6 +43,13 @@ export interface MarketAction {
   balanceChange: string;
   influenceChange: string;
   powerChange: string;
+  participantChanges: Array<{
+    agentId: string;
+    agentUsername: string;
+    balanceChange: string;
+    influenceChange: string;
+    powerChange: string;
+  }>;
 }
 
 export interface Market {

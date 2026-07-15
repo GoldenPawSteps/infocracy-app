@@ -161,18 +161,45 @@ export function normalizeTrade(raw: Record<string, unknown>): Trade {
 }
 
 export function normalizeMarketAction(raw: Record<string, unknown>): MarketAction {
+  const agentId = String(raw.agentId ?? raw.agent_id ?? '');
+  const agentUsername = String(raw.agentUsername ?? raw.agent_username ?? 'Unknown');
+  const balanceChange = String(raw.balanceChange ?? 0);
+  const influenceChange = String(raw.influenceChange ?? 0);
+  const powerChange = String(raw.powerChange ?? 0);
+  const participantChanges = toArray<Record<string, unknown>>(raw.participantChanges ?? raw.participant_changes ?? [], []).map(
+    (entry) => ({
+      agentId: String(entry.agentId ?? entry.agent_id ?? ''),
+      agentUsername: String(entry.agentUsername ?? entry.agent_username ?? 'Unknown'),
+      balanceChange: String(entry.balanceChange ?? 0),
+      influenceChange: String(entry.influenceChange ?? 0),
+      powerChange: String(entry.powerChange ?? 0),
+    }),
+  );
+
   return {
     id: String(raw.id ?? crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)),
     type: raw.type === 'make' || raw.type === 'unmake' ? raw.type : 'take',
-    agentId: String(raw.agentId ?? raw.agent_id ?? ''),
-    agentUsername: String(raw.agentUsername ?? raw.agent_username ?? 'Unknown'),
+    agentId,
+    agentUsername,
     createdAt: String(raw.createdAt ?? raw.created_at ?? new Date().toISOString()),
     shares: toArray<string | number>(raw.shares ?? [], []).map((value) => String(value ?? 0)),
     legitimacy: String(raw.legitimacy ?? 0),
     probabilities: toArray<number | string>(raw.probabilities ?? [], []).map((value) => Number(value ?? 0)),
-    balanceChange: String(raw.balanceChange ?? 0),
-    influenceChange: String(raw.influenceChange ?? 0),
-    powerChange: String(raw.powerChange ?? 0),
+    balanceChange,
+    influenceChange,
+    powerChange,
+    participantChanges:
+      participantChanges.length > 0
+        ? participantChanges
+        : [
+            {
+              agentId,
+              agentUsername,
+              balanceChange,
+              influenceChange,
+              powerChange,
+            },
+          ],
   };
 }
 

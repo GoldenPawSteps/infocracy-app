@@ -28,6 +28,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const [showDecision, setShowDecision] = useState(false);
   const [isSampling, setIsSampling] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
+  const [selectedActionAgents, setSelectedActionAgents] = useState<Record<string, string>>({});
   const [sampleResult, setSampleResult] = useState<{
     outcomeIndex: number;
     outcomeName: string;
@@ -46,6 +47,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     setShowDecision(false);
     setSampleResult(null);
     setSampleError(null);
+    setSelectedActionAgents({});
   }, [market.id]);
 
   const decisionDraft = useMemo(() => {
@@ -240,6 +242,15 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
           <div className="mt-5 space-y-4">
             {(market.actions ?? []).map((action) => (
               <div key={action.id} className="rounded-2xl border border-border bg-[#141414] p-4">
+                {(() => {
+                  const selectedAgentId = selectedActionAgents[action.id];
+                  const selectedParticipant =
+                    action.participantChanges.find((participant) => participant.agentId === selectedAgentId) ??
+                    action.participantChanges.find((participant) => participant.agentId === action.agentId) ??
+                    action.participantChanges[0];
+
+                  return (
+                    <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-text-muted">{action.type}</p>
@@ -247,6 +258,31 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   </div>
                   <p className="text-sm text-text-secondary">{formatDate(action.createdAt)}</p>
                 </div>
+
+                {action.participantChanges.length > 1 ? (
+                  <div className="mt-4 grid gap-2">
+                    <label htmlFor={`action-agent-${action.id}`} className="text-xs uppercase tracking-[0.16em] text-text-muted">
+                      View deltas for
+                    </label>
+                    <select
+                      id={`action-agent-${action.id}`}
+                      className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                      value={selectedParticipant?.agentId ?? ''}
+                      onChange={(event) =>
+                        setSelectedActionAgents((current) => ({
+                          ...current,
+                          [action.id]: event.target.value,
+                        }))
+                      }
+                    >
+                      {action.participantChanges.map((participant) => (
+                        <option key={`${action.id}-${participant.agentId}`} value={participant.agentId}>
+                          {participant.agentUsername} ({participant.agentId === market.makerId ? 'maker' : 'taker'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
 
                 <div className="mt-4 grid gap-2 text-sm text-text-secondary">
                   {action.shares.map((share, index) => (
@@ -260,16 +296,20 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 <div className="mt-4">
                   <ActionPreview
                     title={action.type === 'take' ? 'Take preview' : action.type === 'make' ? 'Make preview' : 'Unmake preview'}
+                    contextLabel={`${selectedParticipant?.agentUsername ?? action.agentUsername} (${(selectedParticipant?.agentId ?? action.agentId) === market.makerId ? 'maker' : 'taker'})`}
                     legitimacy={action.legitimacy}
                     probabilities={market.outcomes.map((outcome, index) => ({
                       label: outcome.name,
                       value: action.probabilities[index] ?? 0,
                     }))}
-                    balanceChange={action.balanceChange}
-                    influenceChange={action.influenceChange}
-                    powerChange={action.powerChange}
+                    balanceChange={selectedParticipant?.balanceChange ?? action.balanceChange}
+                    influenceChange={selectedParticipant?.influenceChange ?? action.influenceChange}
+                    powerChange={selectedParticipant?.powerChange ?? action.powerChange}
                   />
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>

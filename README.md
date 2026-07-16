@@ -97,6 +97,12 @@ docker-compose up --build
 docker-compose exec backend npm run db:seed
 ```
 
+Demo seed details:
+- Demo users: `athena`, `bruno`, `celeste`, `dorian`, `ember`
+- Password for all demo users: `password123`
+- Seeded content: 3 markets, 9 take actions, and 3 unmake actions
+- The first seeded market is `Demo: civic budget referendum`
+
 The app will be available at:
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:4000/api
@@ -135,6 +141,12 @@ npm run db:seed
 # Start dev server (with hot reload)
 npm run dev
 ```
+
+Demo seed details:
+- Demo users: `athena`, `bruno`, `celeste`, `dorian`, `ember`
+- Password for all demo users: `password123`
+- Seeded content: 3 markets, 9 take actions, and 3 unmake actions
+- The first seeded market is `Demo: civic budget referendum`
 
 ### Frontend
 

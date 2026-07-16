@@ -6,6 +6,8 @@ interface LineChartSeries {
   id: string;
   colorClassName: string;
   legendColorClassName?: string;
+  strokeColor?: string;
+  legendColor?: string;
   values: number[];
   displayValues?: number[];
   legendValueFormatter?: (value: number) => string;
@@ -66,6 +68,7 @@ export function LineChart({ labels, series, valueFormatter = (value) => value.to
     return {
       id: entry.id,
       legendColorClassName: entry.legendColorClassName ?? 'bg-text-muted',
+      legendColor: entry.legendColor,
       displayValue,
       legendValueFormatter: entry.legendValueFormatter ?? valueFormatter,
       plottedY: getPointY(plottedValue, minValue, maxValue),
@@ -107,6 +110,7 @@ export function LineChart({ labels, series, valueFormatter = (value) => value.to
               key={entry.id}
               d={getSeriesPath(entry.values.map(clampToNumber), minValue, maxValue)}
               className={entry.colorClassName}
+              style={entry.strokeColor ? { stroke: entry.strokeColor } : undefined}
               strokeWidth="2"
               fill="none"
               vectorEffect="non-scaling-stroke"
@@ -116,7 +120,14 @@ export function LineChart({ labels, series, valueFormatter = (value) => value.to
           ))}
           <line x1={activeX} y1="0" x2={activeX} y2="100" className="stroke-border/70" strokeDasharray="2 2" strokeWidth="1" />
           {activeValues.map((entry) => (
-            <circle key={`${entry.id}-point`} cx={activeX} cy={entry.plottedY} r="1.8" className={entry.legendColorClassName} />
+            <circle
+              key={`${entry.id}-point`}
+              cx={activeX}
+              cy={entry.plottedY}
+              r="1.8"
+              className={entry.legendColorClassName}
+              style={entry.legendColor ? { fill: entry.legendColor } : undefined}
+            />
           ))}
         </svg>
       </div>
@@ -133,7 +144,10 @@ export function LineChart({ labels, series, valueFormatter = (value) => value.to
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-secondary">
         {activeValues.map((entry) => (
           <span key={`${entry.id}-legend`} className="inline-flex items-center gap-2">
-            <span className={`h-0.5 w-4 rounded ${entry.legendColorClassName}`} />
+            <span
+              className={`h-0.5 w-4 rounded ${entry.legendColorClassName}`}
+              style={entry.legendColor ? { backgroundColor: entry.legendColor } : undefined}
+            />
             {entry.id} {entry.legendValueFormatter(entry.displayValue)}
           </span>
         ))}

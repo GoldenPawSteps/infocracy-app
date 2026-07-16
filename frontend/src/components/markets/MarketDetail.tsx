@@ -18,6 +18,11 @@ import { useMarketStore } from '@/store/marketStore';
 const ACTION_HISTORY_PAGE_SIZE = 10;
 type ChartRangeOption = '7d' | '30d' | 'all';
 
+function getOutcomeSeriesColor(index: number, total: number) {
+  const hue = total <= 1 ? 42 : (index * 137.508) % 360;
+  return `hsl(${hue} 78% 62%)`;
+}
+
 function getChartCutoff(range: ChartRangeOption) {
   if (range === 'all') {
     return null;
@@ -112,12 +117,13 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
     });
 
     const probabilitySeries = market.outcomes.map((outcome, index) => {
-      const colorClassName = ['stroke-emerald-300', 'stroke-sky-300', 'stroke-amber-300', 'stroke-rose-300', 'stroke-cyan-300'][index % 5];
-      const legendColorClassName = ['bg-emerald-300', 'bg-sky-300', 'bg-amber-300', 'bg-rose-300', 'bg-cyan-300'][index % 5];
+      const seriesColor = getOutcomeSeriesColor(index, market.outcomes.length);
       return {
         id: `P(${outcome.name})`,
-        colorClassName,
-        legendColorClassName,
+        colorClassName: 'stroke-current',
+        legendColorClassName: 'bg-current',
+        strokeColor: seriesColor,
+        legendColor: seriesColor,
         values: actions.length ? actions.map((action) => action.probabilities[index] ?? 0) : includeSnapshot ? [market.probabilities[index] ?? 0] : [],
         legendValueFormatter: (value: number) => `${(value * 100).toFixed(1)}%`,
       };
@@ -430,6 +436,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                     action.participantChanges.find((participant) => participant.agentId === selectedAgentId) ??
                     action.participantChanges.find((participant) => participant.agentId === action.agentId) ??
                     action.participantChanges[0];
+                  const displayedShares = action.type === 'unmake' ? market.outcomes.map((outcome) => outcome.qValue) : action.shares;
 
                   return (
                     <>
@@ -467,7 +474,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                 ) : null}
 
                 <div className="mt-4 grid gap-2 text-sm text-text-secondary">
-                  {action.shares.map((share, index) => (
+                  {displayedShares.map((share, index) => (
                     <div key={`${action.id}-${index}`} className="flex items-center justify-between gap-3">
                       <span className="min-w-0 break-words">{market.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
                       <span className="shrink-0 text-text-primary">{formatDecimal(share, 4)}</span>

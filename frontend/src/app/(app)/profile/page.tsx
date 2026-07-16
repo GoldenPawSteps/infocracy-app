@@ -617,6 +617,7 @@ export default function ProfilePage() {
                     action.participantChanges.find((participant) => participant.agentId === selectedAgentId) ??
                     action.participantChanges.find((participant) => participant.agentId === action.agentId) ??
                     action.participantChanges[0];
+                  const displayedShares = action.type === 'unmake' ? entry.outcomes.map((outcome) => outcome.qValue) : action.shares;
 
                   return (
                     <div key={actionKey} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
@@ -654,7 +655,7 @@ export default function ProfilePage() {
                       ) : null}
 
                       <div className="mt-4 grid gap-2 text-sm text-text-secondary">
-                        {action.shares.map((share, index) => (
+                        {displayedShares.map((share, index) => (
                           <div key={`${actionKey}-${index}`} className="flex items-center justify-between gap-3">
                             <span className="min-w-0 break-words">{entry.outcomes[index]?.name ?? `Outcome ${index + 1}`}</span>
                             <span className="shrink-0 text-text-primary">{formatDecimal(share, 4)}</span>

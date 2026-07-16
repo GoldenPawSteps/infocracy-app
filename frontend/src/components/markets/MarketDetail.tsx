@@ -165,13 +165,15 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   const filteredActions = useMemo(
     () =>
       (market.actions ?? []).filter((action) => {
+        const normalizedSearch = actionSearch.trim().toLowerCase();
         if (actionAgentFilter !== 'all' && action.agentId !== actionAgentFilter) return false;
-        if (actionSearch && !action.agentUsername.toLowerCase().includes(actionSearch.toLowerCase())) return false;
+        if (normalizedSearch && !action.agentUsername.toLowerCase().includes(normalizedSearch)) return false;
         return true;
       }),
     [actionAgentFilter, actionSearch, market.actions],
   );
   const visibleFilteredActions = useMemo(() => filteredActions.slice(0, visibleActionCount), [filteredActions, visibleActionCount]);
+  const hasActionFilters = actionAgentFilter !== 'all' || actionSearch.trim().length > 0;
 
   const decisionDraft = useMemo(() => {
     const tieEpsilon = 0.000001;
@@ -399,17 +401,31 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
         <Card className="min-w-0 p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-text-primary">Action history</h2>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center" role="search" aria-label="Action history filters">
+              <label htmlFor="action-history-search" className="sr-only">
+                Search action history by agent
+              </label>
               <input
+                id="action-history-search"
                 type="text"
-                placeholder="Search agents..."
+                placeholder="Search actions by agent"
                 value={actionSearch}
-                onChange={(e) => setActionSearch(e.target.value)}
-                className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted outline-none transition focus:border-gold/50 focus:outline-none"
+                onChange={(event) => setActionSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape' && actionSearch) {
+                    event.preventDefault();
+                    setActionSearch('');
+                  }
+                }}
+                aria-describedby="action-history-results-count"
+                className="focus-ring rounded-xl border border-border bg-background-secondary px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted transition focus:border-gold/50"
               />
+              <label htmlFor="action-history-agent-filter" className="sr-only">
+                Filter actions by agent
+              </label>
               <select
                 id="action-history-agent-filter"
-                className="w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none sm:w-auto"
+                className="focus-ring w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 sm:w-auto"
                 value={actionAgentFilter}
                 onChange={(event) => setActionAgentFilter(event.target.value)}
               >
@@ -420,10 +436,24 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   </option>
                 ))}
               </select>
+              {hasActionFilters ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setActionSearch('');
+                    setActionAgentFilter('all');
+                  }}
+                  aria-label="Clear action history filters"
+                >
+                  Clear filters
+                </Button>
+              ) : null}
             </div>
           </div>
           {filteredActions.length > 0 ? (
-            <p className="mt-3 text-sm text-text-secondary">
+            <p id="action-history-results-count" className="mt-3 text-sm text-text-secondary" role="status" aria-live="polite">
               Showing {Math.min(visibleFilteredActions.length, filteredActions.length)} of {filteredActions.length} actions
             </p>
           ) : null}
@@ -455,7 +485,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                     </label>
                     <select
                       id={`action-agent-${action.id}`}
-                      className="w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                      className="focus-ring w-full min-w-0 rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50"
                       value={selectedParticipant?.agentId ?? ''}
                       onChange={(event) =>
                         setSelectedActionAgents((current) => ({

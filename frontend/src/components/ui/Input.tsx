@@ -16,9 +16,9 @@ export const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputPro
   ref,
 ) {
   const sharedClassName = cn(
-    'w-full rounded-xl border border-border bg-[#121212] px-4 py-3 text-base md:text-sm text-text-primary outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/20 placeholder:text-text-muted',
+    'focus-ring w-full rounded-xl border border-border bg-[#121212] px-4 py-3 text-base md:text-sm text-text-primary transition focus:border-gold placeholder:text-text-muted',
     textarea ? 'min-h-[120px] resize-y' : 'h-11 overflow-hidden text-ellipsis placeholder:text-base md:placeholder:text-sm',
-    error ? 'border-danger focus:border-danger focus:ring-danger/20' : '',
+    error ? 'border-danger focus:border-danger focus-visible:ring-danger/30' : '',
     className,
   );
 

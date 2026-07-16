@@ -141,6 +141,14 @@ textarea:-webkit-autofill:focus {
   }
 }
 
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+.focus-ring-soft {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+}
+
 @keyframes route-progress-sheen {
   from {
     transform: translateX(-35%);

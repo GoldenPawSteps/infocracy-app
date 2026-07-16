@@ -557,6 +557,29 @@ Notes:
 openssl rand -hex 64
 ```
 
+#### Post-Deploy Verification Checklist
+
+- Verify backend health endpoint:
+  - `curl -i https://<backend-domain>/api/health`
+  - Expected: HTTP 200 and `{ "ok": true }`.
+- Verify frontend health endpoint:
+  - `curl -i https://<frontend-domain>/health`
+  - Expected: HTTP 200 and `{ "ok": true }`.
+- Verify frontend app route:
+  - Open `https://<frontend-domain>/` in browser.
+  - Expected: app HTML response (not Railway fallback 404).
+- Verify backend API proxied through frontend origin:
+  - `curl -i https://<frontend-domain>/api/health`
+  - Expected: HTTP 200 from backend via rewrite.
+- Verify WebSocket URL configuration:
+  - `NEXT_PUBLIC_WS_URL` points to backend public domain.
+  - Confirm real-time events appear after a trade in UI.
+- Verify database migrations were applied:
+  - Backend startup includes successful `prisma migrate deploy`.
+- Optional seed check:
+  - `railway run --service Backend -- npm run db:seed`
+  - Sign in with demo users afterward to validate seeded data.
+
 ### Production Docker
 
 ```bash

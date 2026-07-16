@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
 
 export function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, balance, influence, power, logout } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -18,8 +19,10 @@ export function Header() {
     setIsSigningOut(true);
     try {
       await logout();
-      startRouteTransition('/signin');
-      router.push('/signin');
+      if (pathname !== '/dashboard') {
+        startRouteTransition('/dashboard');
+        router.push('/dashboard');
+      }
     } finally {
       setIsSigningOut(false);
     }

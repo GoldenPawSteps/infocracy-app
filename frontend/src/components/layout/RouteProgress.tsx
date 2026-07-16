@@ -8,22 +8,43 @@ import { getInternalNavigationPathFromClick } from '@/lib/navigation';
 export function RouteProgress() {
   const pathname = usePathname();
   const previousPathnameRef = useRef(pathname);
+  const fallbackTimerRef = useRef<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const start = () => {
+      if (fallbackTimerRef.current) {
+        window.clearTimeout(fallbackTimerRef.current);
+      }
+
       setIsVisible(true);
       setProgress((current) => (current < 12 ? 12 : current));
+
+      // If route state doesn't change (same-path navigation), auto-complete.
+      fallbackTimerRef.current = window.setTimeout(() => {
+        setProgress(100);
+        window.setTimeout(() => {
+          setIsVisible(false);
+          setProgress(0);
+        }, 180);
+      }, 1400);
     };
 
     const onClick = (event: MouseEvent) => {
-      if (getInternalNavigationPathFromClick(event)) {
+      const destinationPath = getInternalNavigationPathFromClick(event);
+      if (destinationPath && destinationPath !== pathname) {
         start();
       }
     };
 
-    const onTransitionStart = () => {
+    const onTransitionStart = (event: Event) => {
+      const nextPathname = (event as CustomEvent<{ pathname?: string }>).detail?.pathname;
+
+      if (nextPathname && nextPathname === pathname) {
+        return;
+      }
+
       start();
     };
 
@@ -33,8 +54,11 @@ export function RouteProgress() {
     return () => {
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('route:transition-start', onTransitionStart);
+      if (fallbackTimerRef.current) {
+        window.clearTimeout(fallbackTimerRef.current);
+      }
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!isVisible || progress >= 92) {
@@ -64,6 +88,10 @@ export function RouteProgress() {
     }
 
     previousPathnameRef.current = pathname;
+    if (fallbackTimerRef.current) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
     setIsVisible(true);
     setProgress(100);
 

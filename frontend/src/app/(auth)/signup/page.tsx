@@ -85,6 +85,12 @@ export default function SignUpPage() {
                 Sign in instead
               </Link>
             </p>
+            <p className="mt-3 text-sm text-text-secondary">
+              Want to look around first?{' '}
+              <Link href="/dashboard" className="font-medium text-gold-light hover:text-gold">
+                Continue as guest
+              </Link>
+            </p>
           </div>
         </div>
 

@@ -22,7 +22,7 @@ export function Navigation({ vertical = true }: NavigationProps) {
   const [pendingPathname, setPendingPathname] = useState<string | null>(null);
 
   useEffect(() => {
-    setPendingPathname((current) => (current === pathname ? null : current));
+    setPendingPathname(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export function Navigation({ vertical = true }: NavigationProps) {
               'rounded-xl border px-4 py-3 text-sm font-medium transition-all',
               isActive
                 ? 'border-gold/50 bg-gold/10 text-gold-light shadow-[0_0_0_1px_rgba(212,160,23,0.2)]'
-                : 'border-transparent text-text-secondary hover:border-border hover:bg-[#161616] hover:text-text-primary',
+                : 'nav-link-inactive border-transparent text-text-secondary',
             )}
           >
             {item.label}

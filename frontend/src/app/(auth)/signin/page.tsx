@@ -84,6 +84,12 @@ export default function SignInPage() {
                 Create an account
               </Link>
             </p>
+            <p className="mt-3 text-sm text-text-secondary">
+              Prefer to browse first?{' '}
+              <Link href="/dashboard" className="font-medium text-gold-light hover:text-gold">
+                Continue as guest
+              </Link>
+            </p>
           </div>
         </div>
       </Card>

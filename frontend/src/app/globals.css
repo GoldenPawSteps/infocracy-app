@@ -133,6 +133,14 @@ textarea:-webkit-autofill:focus {
   animation-delay: 300ms;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .nav-link-inactive:hover {
+    border-color: #2a2a2a;
+    background-color: #161616;
+    color: #e8e8e8;
+  }
+}
+
 @keyframes route-progress-sheen {
   from {
     transform: translateX(-35%);

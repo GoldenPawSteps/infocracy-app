@@ -182,8 +182,8 @@ export default function DashboardPage() {
                   Create a new market to begin collecting structured belief across your community.
                 </p>
                 <div className="mt-6 flex justify-center">
-                  <Link href="/markets/new">
-                    <Button>Create market</Button>
+                  <Link href={user ? '/markets/new' : '/signin'}>
+                    <Button>{user ? 'Create market' : 'Sign in to create'}</Button>
                   </Link>
                 </div>
               </Card>

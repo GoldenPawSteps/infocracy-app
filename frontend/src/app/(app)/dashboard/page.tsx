@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 import { Leaderboard } from '@/components/leaderboard/Leaderboard';
 import { MarketCard } from '@/components/markets/MarketCard';
@@ -132,6 +133,7 @@ export default function DashboardPage() {
   const marketSort = parseSort(searchParams.get('sort'));
   const marketStatusFilter = parseStatus(searchParams.get('status'));
   const marketSearch = searchParams.get('q') ?? '';
+  const [searchDraft, setSearchDraft] = useState(marketSearch);
   const entries = useLeaderboardStore((state) => state.entries);
   const leaderboardLoading = useLeaderboardStore((state) => state.isLoading);
   const fetchLeaderboard = useLeaderboardStore((state) => state.fetchLeaderboard);
@@ -203,6 +205,20 @@ export default function DashboardPage() {
     const nextQuery = params.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   };
+
+  useEffect(() => {
+    if (searchDraft === marketSearch) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      updateFilters({ search: searchDraft });
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [marketSearch, searchDraft]);
 
   const normalizedSearch = marketSearch.trim().toLowerCase();
   const hasActiveFilters = marketSort !== DEFAULT_SORT || marketStatusFilter !== DEFAULT_STATUS || normalizedSearch.length > 0;
@@ -283,11 +299,12 @@ export default function DashboardPage() {
                 id="market-search"
                 type="text"
                 placeholder="Search markets"
-                value={marketSearch}
-                onChange={(event) => updateFilters({ search: event.target.value })}
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape' && marketSearch) {
                     event.preventDefault();
+                    setSearchDraft('');
                     updateFilters({ search: '' });
                   }
                 }}

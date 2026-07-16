@@ -282,7 +282,7 @@ export default function DashboardPage() {
                 ref={searchInputRef}
                 id="market-search"
                 type="text"
-                placeholder="Search markets by title, description, maker, or outcome"
+                placeholder="Search markets"
                 value={marketSearch}
                 onChange={(event) => updateFilters({ search: event.target.value })}
                 onKeyDown={(event) => {

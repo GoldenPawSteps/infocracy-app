@@ -41,7 +41,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Create the runtime user/group referenced by COPY --chown and USER.
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+USER root
+RUN addgroup -S nodejs || true
+RUN adduser -S nextjs -G nodejs || true
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

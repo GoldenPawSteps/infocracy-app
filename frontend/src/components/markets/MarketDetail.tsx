@@ -164,12 +164,14 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
 
   const filteredActions = useMemo(
     () =>
-      (market.actions ?? []).filter((action) => {
-        const normalizedSearch = actionSearch.trim().toLowerCase();
-        if (actionAgentFilter !== 'all' && action.agentId !== actionAgentFilter) return false;
-        if (normalizedSearch && !action.agentUsername.toLowerCase().includes(normalizedSearch)) return false;
-        return true;
-      }),
+      (market.actions ?? [])
+        .filter((action) => {
+          const normalizedSearch = actionSearch.trim().toLowerCase();
+          if (actionAgentFilter !== 'all' && action.agentId !== actionAgentFilter) return false;
+          if (normalizedSearch && !action.agentUsername.toLowerCase().includes(normalizedSearch)) return false;
+          return true;
+        })
+        .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
     [actionAgentFilter, actionSearch, market.actions],
   );
   const visibleFilteredActions = useMemo(() => filteredActions.slice(0, visibleActionCount), [filteredActions, visibleActionCount]);

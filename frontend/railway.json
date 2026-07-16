@@ -1,0 +1,8 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "deploy": {
+    "startCommand": "sh -c 'HOSTNAME=0.0.0.0 PORT=${PORT:-3000} node server.js'",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300
+  }
+}

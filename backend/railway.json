@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "deploy": {
+    "preDeployCommand": "npx prisma migrate deploy",
+    "startCommand": "node dist/src/index.js",
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 300
+  }
+}

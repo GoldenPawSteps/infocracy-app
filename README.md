@@ -500,18 +500,62 @@ All calculations use [decimal.js](https://mikemcl.github.io/decimal.js/) at 50-d
 
 ## Deployment
 
-### Vercel + Railway
+### Railway (Full Stack)
 
-1. Deploy backend to **Railway**:
-   - Connect your GitHub repo
-   - Set service root to `backend/`
-   - Add environment variables (see table above)
-   - Railway auto-detects Dockerfile
+Deploy all services in one Railway project:
 
-2. Deploy frontend to **Vercel**:
-   - Connect your GitHub repo  
-   - Set root directory to `frontend/`
-   - Set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` to your Railway backend URL
+1. Create a new Railway project from this GitHub repository.
+2. Add four services in the same project:
+  - Backend (root directory: `backend`)
+  - Frontend (root directory: `frontend`)
+  - PostgreSQL (Railway template/plugin)
+  - Redis (Railway template/plugin)
+3. For backend service variables, set:
+  - `NODE_ENV=production`
+  - `PORT=4000`
+  - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+  - `REDIS_URL=${{Redis.REDIS_URL}}`
+  - `JWT_SECRET=<generate with openssl rand -hex 64>`
+  - `JWT_EXPIRES_IN=7d`
+  - `LOG_LEVEL=info`
+  - `BCRYPT_ROUNDS=12`
+  - `RATE_LIMIT_WINDOW_MS=900000`
+  - `RATE_LIMIT_MAX=300`
+  - `CORS_ORIGIN=https://${{Frontend.RAILWAY_PUBLIC_DOMAIN}}`
+4. For frontend service variables, set:
+  - `NEXT_PUBLIC_API_URL=/api`
+  - `BACKEND_INTERNAL_URL=http://${{Backend.RAILWAY_PRIVATE_DOMAIN}}`
+  - `NEXT_PUBLIC_WS_URL=https://${{Backend.RAILWAY_PUBLIC_DOMAIN}}`
+5. Ensure Railway start behavior:
+  - Backend: `npx prisma migrate deploy && node dist/src/index.js`
+  - Frontend: use `frontend/Dockerfile` defaults
+6. Redeploy backend once variables are set, then optionally seed data:
+
+```bash
+# from your local machine with Railway CLI authenticated
+railway run --service Backend -- npm run db:seed
+```
+
+Notes:
+- The frontend uses Next.js rewrites to proxy `/api/*` to backend, which keeps auth cookies same-origin.
+- WebSocket connections use `NEXT_PUBLIC_WS_URL`.
+- `backend/railway.json` and `frontend/railway.json` are included in this repository for Railway service defaults.
+
+#### Railway Troubleshooting
+
+- If frontend build succeeds but deployment fails immediately after image push, verify runtime port binding is dynamic:
+  - `frontend/railway.json` should start with `PORT=${PORT:-3000}` (not a hardcoded port).
+  - `frontend/Dockerfile` should also run Next with `PORT=${PORT:-3000}`.
+- If your Railway domain returns `{"status":"error","code":404,"message":"Application not found"}`:
+  - Confirm the latest frontend deployment status is `SUCCESS`.
+  - Confirm the service is not stopped and has at least one replica in its target region.
+  - Confirm healthcheck path is `/health` and endpoint returns `{ "ok": true }`.
+- If backend startup blocks on Redis in production, deploy with the repository defaults in `backend/src/redis.ts`, which allow startup to continue with pub/sub disabled when Redis is temporarily unavailable.
+- Generate JWT secret with:
+
+```bash
+openssl rand -hex 64
+```
 
 ### Production Docker
 

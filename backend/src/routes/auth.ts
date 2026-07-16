@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config';
 import { prisma } from '../db';
-import { requireAuth } from '../middleware/auth';
+import { optionalAuth, requireAuth } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimiter';
 import { validate } from '../middleware/validate';
 import type { AppServices, AuthTokenPayload } from '../types';
@@ -107,10 +107,10 @@ export function createAuthRouter(services: AppServices): Router {
     res.json({ user: snapshot });
   });
 
-  router.get('/users/:userId', requireAuth, validate({ params: userParamsSchema }), async (req, res) => {
+  router.get('/users/:userId', optionalAuth, validate({ params: userParamsSchema }), async (req, res) => {
     const snapshot = await services.leaderboardService.getUserSnapshot(req.params.userId);
 
-    if (snapshot.id !== req.authUser!.sub) {
+    if (!req.authUser || snapshot.id !== req.authUser.sub) {
       res.json({
         user: {
           ...snapshot,

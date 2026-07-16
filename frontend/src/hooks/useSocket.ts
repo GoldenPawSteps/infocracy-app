@@ -25,7 +25,11 @@ export function useSocket() {
       if (marketId) {
         await useMarketStore.getState().fetchMarket(marketId);
       }
-      await useAuthStore.getState().fetchMe();
+
+      const authState = useAuthStore.getState();
+      if (authState.user) {
+        await authState.fetchMe();
+      }
     };
 
     const handleMarketCreated = async (payload?: { id?: string }) => {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 import { ProbabilityBar } from '@/components/markets/ProbabilityBar';
@@ -55,7 +54,8 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
   } | null>(null);
 
   const isMaker = currentUserId === market.makerId;
-  const canTrade = !market.isUnmade && !isMaker;
+  const isAuthenticated = Boolean(currentUserId);
+  const canTrade = isAuthenticated && !market.isUnmade && !isMaker;
   const legitimacy = useMemo(
     () => computeLmsrLegitimacy(market.outcomes.map((outcome) => outcome.qValue), market.liquidityB),
     [market.liquidityB, market.outcomes],
@@ -275,6 +275,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   variant="secondary"
                   className="w-full sm:min-w-[11rem]"
                   onClick={() => void handleSampleDecision()}
+                  disabled={!isAuthenticated}
                   loading={isSampling}
                 >
                   Sample Governance Decision
@@ -422,8 +423,7 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
           ) : null}
           <div className="mt-5 space-y-4">
             {visibleFilteredActions.map((action) => (
-              <Link key={action.id} href={`/profile?user=${action.agentId}`}>
-                <div className="min-w-0 cursor-pointer rounded-2xl border border-border bg-[#141414] p-4 transition hover:border-gold/40 hover:bg-[#1a1a1a]">
+              <div key={action.id} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
                 {(() => {
                   const selectedAgentId = selectedActionAgents[action.id];
                   const selectedParticipant =
@@ -493,7 +493,6 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   );
                 })()}
               </div>
-            </Link>
             ))}
             {filteredActions.length === 0 ? (
               <div className="rounded-2xl border border-border bg-[#141414] p-4 text-sm text-text-secondary">

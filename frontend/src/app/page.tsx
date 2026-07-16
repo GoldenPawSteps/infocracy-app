@@ -8,21 +8,19 @@ import { startRouteTransition } from '@/lib/navigation';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isLoading, fetchMe } = useAuth();
+  const { isLoading, fetchMe } = useAuth();
 
   useEffect(() => {
-    if (!user) {
-      void fetchMe().catch(() => undefined);
-    }
-  }, [fetchMe, user]);
+    void fetchMe().catch(() => undefined);
+  }, [fetchMe]);
 
   useEffect(() => {
     if (!isLoading) {
-      const destinationPath = user ? '/dashboard' : '/signin';
+      const destinationPath = '/dashboard';
       startRouteTransition(destinationPath);
       router.replace(destinationPath);
     }
-  }, [isLoading, router, user]);
+  }, [isLoading, router]);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center px-6">

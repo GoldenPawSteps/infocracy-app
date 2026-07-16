@@ -103,8 +103,8 @@ export default function DashboardPage() {
                 Monitor active governance questions, see who is accumulating predictive power, and launch new markets when a decision needs structured signal.
               </p>
             </div>
-            <Link href="/markets/new">
-              <Button>Create Market</Button>
+            <Link href={user ? '/markets/new' : '/signin'}>
+              <Button>{user ? 'Create Market' : 'Sign in to Trade'}</Button>
             </Link>
           </div>
 

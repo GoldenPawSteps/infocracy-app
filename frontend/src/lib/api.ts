@@ -59,9 +59,6 @@ api.interceptors.response.use(
 
     if (responseStatus === 401 && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-      if (window.location.pathname !== '/signin') {
-        window.location.href = '/signin';
-      }
     }
 
     return Promise.reject(error);

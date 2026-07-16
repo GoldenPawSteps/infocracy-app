@@ -48,29 +48,44 @@ export function Header() {
             <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Power</p>
             <p className="mt-1 font-medium text-text-primary">{formatPower(power)}</p>
           </div>
-          <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-4 py-2 text-sm font-medium text-text-primary transition hover:border-gold hover:text-gold-light">
-              <span>{user?.username ?? 'Account'}</span>
-              <span className="text-gold-light transition group-open:rotate-180">▾</span>
-            </summary>
-            <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-border bg-surface p-2 shadow-glow">
-              <Link
-                href="/profile"
-                className="block rounded-xl px-3 py-2 text-sm text-text-secondary transition hover:bg-[#151515] hover:text-text-primary"
-              >
-                Profile
+          {user ? (
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-4 py-2 text-sm font-medium text-text-primary transition hover:border-gold hover:text-gold-light">
+                <span>{user.username}</span>
+                <span className="text-gold-light transition group-open:rotate-180">▾</span>
+              </summary>
+              <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-border bg-surface p-2 shadow-glow">
+                <Link
+                  href="/profile"
+                  className="block rounded-xl px-3 py-2 text-sm text-text-secondary transition hover:bg-[#151515] hover:text-text-primary"
+                >
+                  Profile
+                </Link>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="mt-1 w-full justify-start px-3"
+                  onClick={handleSignOut}
+                  loading={isSigningOut}
+                >
+                  Sign out
+                </Button>
+              </div>
+            </details>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/signin">
+                <Button type="button" variant="secondary" size="sm">
+                  Sign in
+                </Button>
               </Link>
-              <Button
-                type="button"
-                variant="ghost"
-                className="mt-1 w-full justify-start px-3"
-                onClick={handleSignOut}
-                loading={isSigningOut}
-              >
-                Sign out
-              </Button>
+              <Link href="/signup">
+                <Button type="button" size="sm">
+                  Sign up
+                </Button>
+              </Link>
             </div>
-          </details>
+          )}
         </div>
       </div>
     </header>

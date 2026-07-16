@@ -28,6 +28,11 @@ export function getInternalNavigationPathFromClick(event: MouseEvent): string | 
     return null;
   }
 
+  // Ignore form control interactions, including controls nested inside links.
+  if (target.closest('select, option, input, textarea, button, [role="combobox"], [contenteditable="true"]')) {
+    return null;
+  }
+
   const anchor = target.closest('a');
   if (!anchor) {
     return null;

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 import { ActionPreview } from '@/components/markets/ActionPreview';
@@ -120,6 +119,7 @@ export default function ProfilePage() {
   const [selectedPositionAgents, setSelectedPositionAgents] = useState<Record<string, string>>({});
   const [marketFilter, setMarketFilter] = useState<string>('all');
   const [positionStatusFilter, setPositionStatusFilter] = useState<'all' | 'active' | 'unmade'>('all');
+  const [positionRoleFilter, setPositionRoleFilter] = useState<'all' | 'maker' | 'taker'>('all');
   const [positionSort, setPositionSort] = useState<MarketSortOption>('legitimacy');
   const [visibleProfileActionCount, setVisibleProfileActionCount] = useState<number>(PROFILE_ACTION_PAGE_SIZE);
   const [visiblePositionCount, setVisiblePositionCount] = useState<number>(POSITION_PAGE_SIZE);
@@ -303,6 +303,7 @@ export default function ProfilePage() {
     setSelectedPositionAgents({});
     setMarketFilter('all');
     setPositionStatusFilter('all');
+    setPositionRoleFilter('all');
     setPositionSort('legitimacy');
     setVisibleProfileActionCount(PROFILE_ACTION_PAGE_SIZE);
     setAgentChartRange('30d');
@@ -314,7 +315,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setVisiblePositionCount(POSITION_PAGE_SIZE);
-  }, [positionStatusFilter, positionSort, positionSearch]);
+  }, [positionStatusFilter, positionRoleFilter, positionSort, positionSearch]);
 
   const createdMarkets = useMemo(() => markets.filter((market) => market.makerId === profileUserId), [markets, profileUserId]);
   const activePositions = useMemo(() => detailedPositionMarkets.filter((market) => !market.isUnmade), [detailedPositionMarkets]);
@@ -349,10 +350,12 @@ export default function ProfilePage() {
       detailedPositionMarkets.filter((market) => {
         if (positionStatusFilter === 'active' && market.isUnmade) return false;
         if (positionStatusFilter === 'unmade' && !market.isUnmade) return false;
+        if (positionRoleFilter === 'maker' && market.makerId !== profileUserId) return false;
+        if (positionRoleFilter === 'taker' && market.makerId === profileUserId) return false;
         if (positionSearch && !market.title.toLowerCase().includes(positionSearch.toLowerCase())) return false;
         return true;
       }),
-    [detailedPositionMarkets, positionStatusFilter, positionSearch],
+    [detailedPositionMarkets, positionStatusFilter, positionRoleFilter, positionSearch, profileUserId],
   );
 
   const sortedPositionMarkets = useMemo(() => sortMarkets(filteredPositionMarkets, positionSort), [filteredPositionMarkets, positionSort]);
@@ -616,8 +619,7 @@ export default function ProfilePage() {
                     action.participantChanges[0];
 
                   return (
-                    <Link key={actionKey} href={`/markets/${entry.marketId}`}>
-                      <div className="min-w-0 cursor-pointer rounded-2xl border border-border bg-[#141414] p-4 transition hover:border-gold/40 hover:bg-[#1a1a1a]">
+                    <div key={actionKey} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs uppercase tracking-[0.22em] text-text-muted">{action.type}</p>
@@ -675,7 +677,6 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                    </Link>
                   );
                 })
               ) : (
@@ -701,21 +702,21 @@ export default function ProfilePage() {
           <Card className="p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-semibold text-text-primary">Position summary</h2>
-              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                 <input
                   type="text"
                   placeholder="Search positions..."
                   value={positionSearch}
                   onChange={(e) => setPositionSearch(e.target.value)}
-                  className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted outline-none transition focus:border-gold/50 focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-background-secondary px-3 py-2 text-base md:text-sm text-text-primary placeholder-text-muted outline-none transition focus:border-gold/50 focus:outline-none sm:w-auto"
                 />
-                <div className="flex flex-nowrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <label htmlFor="position-status-filter" className="text-xs text-text-muted">
                     Status
                   </label>
                   <select
                     id="position-status-filter"
-                    className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                    className="max-w-full rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
                     value={positionStatusFilter}
                     onChange={(event) => setPositionStatusFilter(event.target.value as 'all' | 'active' | 'unmade')}
                   >
@@ -723,12 +724,25 @@ export default function ProfilePage() {
                     <option value="active">Active</option>
                     <option value="unmade">Unmade</option>
                   </select>
+                  <label htmlFor="position-role-filter" className="text-xs text-text-muted">
+                    Role
+                  </label>
+                  <select
+                    id="position-role-filter"
+                    className="max-w-full rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                    value={positionRoleFilter}
+                    onChange={(event) => setPositionRoleFilter(event.target.value as 'all' | 'maker' | 'taker')}
+                  >
+                    <option value="all">All</option>
+                    <option value="maker">Maker</option>
+                    <option value="taker">Taker</option>
+                  </select>
                   <label htmlFor="position-sort" className="text-xs text-text-muted">
                     Sort by
                   </label>
                   <select
                     id="position-sort"
-                    className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
+                    className="max-w-full rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary focus:border-gold/50 focus:outline-none"
                     value={positionSort}
                     onChange={(event) => setPositionSort(event.target.value as MarketSortOption)}
                   >
@@ -842,8 +856,7 @@ export default function ProfilePage() {
                   deltaP = String(Number(deltaB) + Number(deltaI));
 
                   return (
-                    <Link key={market.id} href={`/markets/${market.id}`}>
-                      <div className="min-w-0 cursor-pointer rounded-2xl border border-border bg-[#141414] p-4 transition hover:border-gold/40 hover:bg-[#1a1a1a]">
+                    <div key={market.id} className="min-w-0 rounded-2xl border border-border bg-[#141414] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs uppercase tracking-[0.22em] text-text-muted">Position</p>
@@ -919,7 +932,6 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                    </Link>
                   );
                 })
               ) : (

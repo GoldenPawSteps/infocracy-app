@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { Header } from '@/components/layout/Header';
 import { Navigation } from '@/components/layout/Navigation';
@@ -10,55 +9,16 @@ import { PageTransition } from '@/components/layout/PageTransition';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
-import { startRouteTransition } from '@/lib/navigation';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const { user, isLoading, fetchMe } = useAuth();
-  const [hasResolvedAuth, setHasResolvedAuth] = useState(false);
+  const { fetchMe } = useAuth();
 
   useSocket();
 
   useEffect(() => {
-    if (user) {
-      setHasResolvedAuth(true);
-      return;
-    }
-
-    let cancelled = false;
-
     void fetchMe()
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) {
-          setHasResolvedAuth(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchMe, user]);
-
-  useEffect(() => {
-    if (hasResolvedAuth && !isLoading && !user) {
-      startRouteTransition('/signin');
-      router.replace('/signin');
-    }
-  }, [hasResolvedAuth, isLoading, router, user]);
-
-  if (!hasResolvedAuth || !user) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center px-6">
-        <div className="rounded-2xl border border-gold/20 bg-surface px-8 py-6 shadow-glow">
-          <div className="flex items-center gap-3 text-gold-light">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            <span className="text-sm uppercase tracking-[0.24em]">Loading workspace</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+      .catch(() => undefined);
+  }, [fetchMe]);
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-[1600px] px-4 py-4 md:px-6 md:py-6">

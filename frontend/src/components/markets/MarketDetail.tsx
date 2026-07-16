@@ -283,7 +283,6 @@ export function MarketDetail({ market, currentUserId }: MarketDetailProps) {
                   variant="secondary"
                   className="w-full sm:min-w-[11rem]"
                   onClick={() => void handleSampleDecision()}
-                  disabled={!isAuthenticated}
                   loading={isSampling}
                 >
                   Sample Governance Decision

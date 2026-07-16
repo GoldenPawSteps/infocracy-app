@@ -48,7 +48,7 @@ export interface TradeInput {
 
 export interface GovernanceSampleInput {
   marketId: string;
-  sampledBy: string;
+  sampledBy?: string;
   seed?: string;
 }
 

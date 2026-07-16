@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
+import { optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import type { AppServices } from '../types';
 
@@ -15,10 +15,10 @@ const bodySchema = z.object({
 export function createGovernanceRouter(services: AppServices): Router {
   const router = Router();
 
-  router.post('/:marketId/sample', requireAuth, validate({ params: paramsSchema, body: bodySchema }), async (req, res) => {
+  router.post('/:marketId/sample', optionalAuth, validate({ params: paramsSchema, body: bodySchema }), async (req, res) => {
     const result = await services.governanceService.sampleOutcome({
       marketId: req.params.marketId,
-      sampledBy: req.authUser!.sub,
+      sampledBy: req.authUser?.sub,
       seed: req.body.seed,
     });
 

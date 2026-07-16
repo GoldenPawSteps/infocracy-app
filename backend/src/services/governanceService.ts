@@ -41,14 +41,16 @@ export class GovernanceService {
       }
     }
 
-    await this.prisma.governanceLog.create({
-      data: {
-        marketId: market.id,
-        sampledBy: input.sampledBy,
-        outcome: sampledIndex,
-        seed,
-      },
-    });
+    if (input.sampledBy) {
+      await this.prisma.governanceLog.create({
+        data: {
+          marketId: market.id,
+          sampledBy: input.sampledBy,
+          outcome: sampledIndex,
+          seed,
+        },
+      });
+    }
 
     return {
       marketId: market.id,

@@ -260,7 +260,7 @@ export default function ProfilePage() {
         const nextActions = detailedMarkets
           .flatMap((market) =>
             (market.actions ?? [])
-              .filter((action) => action.agentId === profileUserId)
+              .filter((action) => action.participantChanges.some((participant) => participant.agentId === profileUserId))
               .map((action) => ({
                 id: `${market.id}:${action.id}`,
                 marketId: market.id,
@@ -625,6 +625,7 @@ export default function ProfilePage() {
                         <div className="min-w-0">
                           <p className="text-xs uppercase tracking-[0.22em] text-text-muted">{action.type}</p>
                           <p className="mt-2 break-words font-medium text-text-primary">{entry.marketTitle}</p>
+                          <p className="mt-1 text-sm text-text-secondary">{action.agentUsername}</p>
                         </div>
                         <p className="shrink-0 text-sm text-text-secondary">{formatDate(action.createdAt)}</p>
                       </div>

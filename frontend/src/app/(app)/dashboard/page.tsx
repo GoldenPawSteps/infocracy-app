@@ -20,6 +20,7 @@ type MarketStatusFilter = 'all' | 'active' | 'unmade';
 
 const DEFAULT_SORT: MarketSortOption = 'legitimacy';
 const DEFAULT_STATUS: MarketStatusFilter = 'all';
+const MARKET_PAGE_SIZE = 10;
 
 function parseSort(value: string | null): MarketSortOption {
   if (value === 'entropy' || value === 'newest' || value === 'oldest' || value === 'liquidity' || value === 'title') {
@@ -134,6 +135,7 @@ export default function DashboardPage() {
   const marketStatusFilter = parseStatus(searchParams.get('status'));
   const marketSearch = searchParams.get('q') ?? '';
   const [searchDraft, setSearchDraft] = useState(marketSearch);
+  const [visibleMarketCount, setVisibleMarketCount] = useState(MARKET_PAGE_SIZE);
   const entries = useLeaderboardStore((state) => state.entries);
   const leaderboardLoading = useLeaderboardStore((state) => state.isLoading);
   const fetchLeaderboard = useLeaderboardStore((state) => state.fetchLeaderboard);
@@ -223,6 +225,10 @@ export default function DashboardPage() {
   const normalizedSearch = marketSearch.trim().toLowerCase();
   const hasActiveFilters = marketSort !== DEFAULT_SORT || marketStatusFilter !== DEFAULT_STATUS || normalizedSearch.length > 0;
 
+  useEffect(() => {
+    setVisibleMarketCount(MARKET_PAGE_SIZE);
+  }, [marketSort, marketStatusFilter, normalizedSearch]);
+
   const filteredMarkets = useMemo(
     () =>
       markets.filter((market) => {
@@ -249,6 +255,10 @@ export default function DashboardPage() {
     [marketStatusFilter, markets, normalizedSearch],
   );
   const sortedMarkets = useMemo(() => sortMarkets(filteredMarkets, marketSort), [filteredMarkets, marketSort]);
+  const visibleSortedMarkets = useMemo(
+    () => sortedMarkets.slice(0, visibleMarketCount),
+    [sortedMarkets, visibleMarketCount],
+  );
   const activeMarkets = markets.filter((market) => !market.isUnmade);
   const archivedMarkets = markets.filter((market) => market.isUnmade);
   const showMarketSkeletons = isLoading && markets.length === 0;
@@ -362,7 +372,7 @@ export default function DashboardPage() {
           </div>
 
           <p id="market-results-count" className="text-sm text-text-secondary" role="status" aria-live="polite">
-            Showing {sortedMarkets.length} of {markets.length} markets.
+            Showing {Math.min(visibleSortedMarkets.length, sortedMarkets.length)} of {sortedMarkets.length} matching markets.
           </p>
 
           <div className="grid gap-4" aria-busy={showMarketSkeletons}>
@@ -372,8 +382,8 @@ export default function DashboardPage() {
                 <MarketCardSkeleton />
                 <MarketCardSkeleton />
               </>
-            ) : sortedMarkets.length ? (
-              sortedMarkets.map((market) => <MarketCard key={market.id} market={market} />)
+            ) : visibleSortedMarkets.length ? (
+              visibleSortedMarkets.map((market) => <MarketCard key={market.id} market={market} />)
             ) : (
               <Card className="border-dashed p-8 text-center">
                 {markets.length ? (
@@ -402,6 +412,16 @@ export default function DashboardPage() {
               </Card>
             )}
           </div>
+          {!showMarketSkeletons && sortedMarkets.length > visibleMarketCount ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => setVisibleMarketCount((count) => count + MARKET_PAGE_SIZE)}
+            >
+              Show more markets
+            </Button>
+          ) : null}
         </section>
       </div>
 

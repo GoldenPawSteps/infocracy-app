@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import type { LeaderboardEntry } from '@/lib/types';
 import { formatBalance, formatInfluence, formatPower } from '@/lib/utils';
 
@@ -12,11 +13,13 @@ interface LeaderboardProps {
 }
 
 type LeaderboardSortOption = 'power' | 'balance' | 'influence';
+const LEADERBOARD_PAGE_SIZE = 10;
 
 const metricValue = (entry: LeaderboardEntry, metric: LeaderboardSortOption) => Number(entry[metric] ?? 0);
 
 export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
   const [sortBy, setSortBy] = useState<LeaderboardSortOption>('power');
+  const [visibleEntryCount, setVisibleEntryCount] = useState<number>(LEADERBOARD_PAGE_SIZE);
 
   const sortedEntries = useMemo(() => {
     return [...entries].sort((left, right) => {
@@ -28,6 +31,12 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
       return left.rank - right.rank;
     });
   }, [entries, sortBy]);
+
+  useEffect(() => {
+    setVisibleEntryCount(LEADERBOARD_PAGE_SIZE);
+  }, [sortBy, entries]);
+
+  const visibleEntries = useMemo(() => sortedEntries.slice(0, visibleEntryCount), [sortedEntries, visibleEntryCount]);
 
   const sortBadge = sortBy === 'power' ? '⚡ Power' : sortBy === 'balance' ? '💰 Balance' : '🧭 Influence';
 
@@ -60,7 +69,10 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
 
       <div className="mt-5 space-y-3">
         {sortedEntries.length ? (
-          sortedEntries.map((entry, index) => {
+          <p className="text-sm text-text-secondary">Showing {Math.min(visibleEntries.length, sortedEntries.length)} of {sortedEntries.length} entries</p>
+        ) : null}
+        {sortedEntries.length ? (
+          visibleEntries.map((entry, index) => {
             const isCurrentUser = entry.userId === currentUserId;
             return (
               <Link key={entry.userId} href={`/profile?user=${entry.userId}`}>
@@ -95,6 +107,16 @@ export function Leaderboard({ entries, currentUserId }: LeaderboardProps) {
             No leaderboard data yet. Once trading begins, rankings will appear here in real time.
           </div>
         )}
+        {sortedEntries.length > visibleEntryCount ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setVisibleEntryCount((count) => count + LEADERBOARD_PAGE_SIZE)}
+          >
+            Show more leaderboard entries
+          </Button>
+        ) : null}
       </div>
     </Card>
   );
